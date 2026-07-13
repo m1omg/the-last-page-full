@@ -1,0 +1,607 @@
+// smoke.mjs — headless end-to-end playthrough of the whole game.
+// Serves the project, boots Chromium, drives keys through: title → intro →
+// dream hub → all three areas (items, recruits, bosses via Reach Out) →
+// depths → both endings. Fails on any console error or stall.
+import { chromium } from "playwright";
+import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
+import { join, dirname, extname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const shots = join(root, "tools", "_shots");
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".jpg": "image/jpeg", ".wav": "audio/wav", ".json": "application/json", ".woff2": "font/woff2" };
+
+const server = createServer(async (req, res) => {
+  try {
+    let p = decodeURIComponent(new URL(req.url, "http://x").pathname);
+    if (p === "/") p = "/index.html";
+    const data = await readFile(join(root, p));
+    res.writeHead(200, { "content-type": MIME[extname(p)] || "application/octet-stream" });
+    res.end(data);
+  } catch {
+    res.writeHead(404); res.end("nope");
+  }
+});
+await new Promise((r) => server.listen(0, r));
+const port = server.address().port;
+
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 980, height: 740 } });
+const errors = [];
+page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+page.on("pageerror", (e) => errors.push(String(e)));
+
+const g = (expr) => page.evaluate(expr);
+const key = async (k, n = 1) => { for (let i = 0; i < n; i++) { await page.keyboard.press(k); await page.waitForTimeout(90); } };
+const shot = (name) => page.screenshot({ path: join(shots, `${name}.png`) });
+let step = "boot";
+const fail = async (msg) => {
+  console.error(`FAIL at [${step}]: ${msg}`);
+  if (errors.length) console.error("console errors:\n" + errors.join("\n"));
+  try { await shot("FAIL"); } catch {}
+  process.exit(1);
+};
+
+async function waitIdle(timeout = 15000, { chooseIdx = 0 } = {}) {
+  // drive through anything (dialogue, choices, battles, CGs) until idle on map
+  let t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    const m = await mode();
+    // battles run long now (bosses are 5-8 rounds by design) — don't let the
+    // fight time count against the idle timeout
+    if (m === "battle") { await runBattlePeace(); t0 = Date.now(); continue; }
+    if (m === "cg") { await page.keyboard.press("KeyZ"); await page.waitForTimeout(120); continue; }
+    const busy = await g("window.__game.busy()");
+    if (!busy && m === "map") return;
+    const dlgActive = await g("window.__game.game.dialogue.active");
+    if (dlgActive) {
+      const choice = await g("!!window.__game.game.dialogue.choice");
+      if (choice) await chooseOption(chooseIdx);
+      else await page.keyboard.press("KeyZ");
+    }
+    await page.waitForTimeout(120);
+  }
+  await fail(`still busy after ${timeout}ms (mode=${await mode()})`);
+}
+async function chooseOption(index) {
+  // dialogue choice: set index deterministically, confirm
+  await g(`(() => { const c = window.__game.game.dialogue.choice; if (c) c.index = ${index}; })()`);
+  await page.waitForTimeout(60);
+  await page.keyboard.press("KeyZ");
+  await page.waitForTimeout(150);
+}
+async function waitChoice(timeout = 15000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    if (await g("!!window.__game.game.dialogue.choice")) return;
+    const dlgActive = await g("window.__game.game.dialogue.active");
+    if (dlgActive) await page.keyboard.press("KeyZ");
+    await page.waitForTimeout(110);
+  }
+  fail("no choice appeared");
+}
+async function walkTo(x, y, timeout = 12000) {
+  // naive greedy walker good enough for our open maps; uses debug teleport
+  await g(`window.__game.game.state.x = ${x}; window.__game.game.state.y = ${y}; window.__game.game.mapScene.moving = null;`);
+  await page.waitForTimeout(80);
+}
+async function pressToward(dir, n = 1) {
+  const keys = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight" };
+  for (let i = 0; i < n; i++) {
+    await page.keyboard.down(keys[dir]);
+    await page.waitForTimeout(200);
+    await page.keyboard.up(keys[dir]);
+    await page.waitForTimeout(60);
+  }
+}
+const mode = () => g("window.__game.game.mode");
+// walk into a touch zone; chasing enemies may interrupt with a battle — retry
+async function goThrough(x, y, dir, expectedMap, tries = 4) {
+  for (let i = 0; i < tries; i++) {
+    await walkTo(x, y);
+    await pressToward(dir, 1);
+    await waitIdle(60000);
+    if ((await g("window.__game.game.state.map")) === expectedMap) return;
+  }
+  await fail(`could not reach ${expectedMap} from (${x},${y}) ${dir}`);
+}
+const flag = (f) => g(`!!window.__game.game.state.flags[${JSON.stringify(f)}]`);
+
+// rounds of the most recently finished battle — asserted after boss fights so
+// a balance regression back to one-round pacifism fails the suite
+let lastBattleRounds = 0;
+
+async function runBattlePeace(timeout = 300000) {
+  // Generic battle driver playing like a sensible pacifist: heal whoever is
+  // hurt (Warm Glow, else a snack), otherwise Reach Out with a good option.
+  // The storm gate / settle / no-repeat rules need no special handling — the
+  // menu greys the just-used option and fizzles are harmless.
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    if ((await mode()) !== "battle") return;
+    const st = await g(`(() => {
+      const b = window.__game.game.battle;
+      if (!b) return null;
+      const m = b.party[b.cmdIndex];
+      const inv = window.__game.game.state.inventory;
+      return { msgs: b.msgQ.length, phase: b.phase, menu: b.menu.kind, rounds: b.rounds,
+               items: b.menuItems ? b.menuItems().map(o => ({label: o.label, disabled: !!o.disabled})) : [],
+               actor: m ? { id: m.id, ink: m.ink } : null,
+               hurt: b.party.findIndex(p => p.hp > 0 && p.hp < p.maxHp * 0.4),
+               hasSnack: Object.keys(inv).some(id => inv[id] > 0 && ["cookie","sandwich"].includes(id)) };
+    })()`);
+    if (!st) { await page.waitForTimeout(150); continue; }
+    lastBattleRounds = st.rounds;
+    if (st.msgs > 0) { await page.keyboard.press("KeyZ"); await page.waitForTimeout(100); continue; }
+    if (st.phase !== "command") { await page.waitForTimeout(120); continue; }
+    if (st.menu === "main") {
+      // 0 Fight, 1 Skills, 2 Reach Out, 3 Items, 4 Steady, 5 Run
+      let idx = 2;
+      if (st.hurt >= 0 && st.actor && st.actor.id === "wisp" && st.actor.ink >= 5) idx = 1;
+      else if (st.hurt >= 0 && st.hasSnack) idx = 3;
+      await g(`window.__game.game.battle.menu.index = ${idx}`);
+      await page.keyboard.press("KeyZ");
+    } else if (st.menu === "skill") {
+      const pick = st.items.findIndex((o) => o.label.includes("Warm Glow") && !o.disabled);
+      if (pick < 0) { await page.keyboard.press("KeyX"); } // back to main → reach next loop
+      else { await g(`window.__game.game.battle.menu.index = ${pick}`); await page.keyboard.press("KeyZ"); }
+    } else if (st.menu === "item") {
+      const pick = st.items.findIndex((o) => !o.disabled && (o.label.includes("Cookie") || o.label.includes("Sandwich")));
+      if (pick < 0) { await page.keyboard.press("KeyX"); }
+      else { await g(`window.__game.game.battle.menu.index = ${pick}`); await page.keyboard.press("KeyZ"); }
+    } else if (st.menu === "ally") {
+      await g(`window.__game.game.battle.menu.index = ${st.hurt >= 0 ? st.hurt : 0}`);
+      await page.keyboard.press("KeyZ");
+    } else if (st.menu === "reach_target") {
+      await page.keyboard.press("KeyZ");
+    } else if (st.menu === "reach") {
+      // options are ordered good..., bad last; only the just-used good one is
+      // disabled, so the first enabled entry is always a good option
+      const pick = st.items.findIndex((o) => !o.disabled);
+      if (pick < 0) { await page.keyboard.press("KeyX"); await g(`window.__game.game.battle.menu.index = 0`); await page.keyboard.press("KeyZ"); }
+      else { await g(`window.__game.game.battle.menu.index = ${pick}`); await page.keyboard.press("KeyZ"); }
+    } else {
+      await page.keyboard.press("KeyZ");
+    }
+    await page.waitForTimeout(120);
+  }
+  fail("battle did not finish");
+}
+
+// ------------------------------------------------------------ run
+await import("node:fs").then((fs) => fs.promises.mkdir(shots, { recursive: true }));
+await page.goto(`http://localhost:${port}/?debug`);
+await page.waitForFunction("window.__ready === true", null, { timeout: 30000 });
+await page.waitForTimeout(600);
+
+// fast path: SMOKE_ENDING=page → jump to the final choice and take the dream ending
+if (process.env.SMOKE_ENDING === "page") {
+  step = "dream ending (fast path)";
+  await key("KeyZ");
+  await page.waitForTimeout(1600);
+  await waitIdle(25000);
+  await g(`(() => {
+    const s = window.__game.game.state;
+    s.pages = 4;
+    ["blank_intro_done","biscuit_joined","wisp_joined","meadow_boss_done","woods_boss_done","bay_boss_done"].forEach(f => s.flags[f] = true);
+    window.__game.game.state.party.push(...[]);
+  })()`);
+  await g(`window.__game.game.runScript([{ t: "join", member: "biscuit" }, { t: "join", member: "wisp" }])`);
+  await page.waitForTimeout(200);
+  await g(`window.__game.tp("depths_2", 10, 12)`);
+  await page.waitForTimeout(400);
+  await waitIdle(60000); // s_depths2_enter: page 4 + CG
+  await walkTo(10, 10); await pressToward("up", 1);
+  {
+    const t = Date.now();
+    while ((await mode()) !== "battle") {
+      if (Date.now() - t > 25000) await fail("smudge battle never started");
+      const choice = await g("!!window.__game.game.dialogue.choice");
+      if (choice) await chooseOption(0); else await page.keyboard.press("KeyZ");
+      await page.waitForTimeout(150);
+    }
+  }
+  await runBattlePeace(120000);
+  await waitChoice(40000);
+  await chooseOption(1); // stay on the page
+  {
+    const t = Date.now();
+    // the ending CG must actually be VISIBLE — the fade-to-black before the
+    // choice once stayed up, playing the whole dream ending under black
+    let cgChecked = false;
+    while ((await mode()) !== "credits") {
+      if (Date.now() - t > 60000) await fail("dream ending credits never rolled (mode=" + (await mode()) + ")");
+      if (!cgChecked && (await mode()) === "cg") {
+        await page.waitForTimeout(2400); // let the unfade finish
+        const lum = await g(`(() => {
+          const c = document.querySelector("canvas");
+          const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+          let sum = 0, n = 0;
+          for (let i = 0; i < d.length; i += 4096) { sum += d[i] + d[i + 1] + d[i + 2]; n++; }
+          return sum / n / 3;
+        })()`);
+        if (lum < 12) await fail("dream ending CG is (near-)black: mean luminance " + lum.toFixed(1));
+        cgChecked = true;
+      }
+      await page.keyboard.press("KeyZ");
+      await page.waitForTimeout(200);
+    }
+    if (!cgChecked) await fail("dream ending never entered cg mode");
+  }
+  await shot("ending_page");
+  if (errors.length) await fail("console errors during run");
+  console.log("SMOKE OK — dream ending path, zero console errors");
+  await browser.close(); server.close(); process.exit(0);
+}
+await shot("01_title");
+if ((await mode()) !== "title") fail("not on title");
+
+step = "new game";
+await key("KeyZ"); // possibly Continue/New Game — pick last option = New Game
+const hasSave = await g("!!localStorage.getItem('the-last-page-save')");
+await page.waitForTimeout(1600);
+if ((await mode()) !== "map") fail("did not enter map");
+await waitIdle();
+await shot("02_bedroom");
+
+step = "menu open/close";
+await key("KeyX");
+await page.waitForTimeout(250);
+if (!(await g("window.__game.game.menu.open"))) await fail("menu didn't open on X");
+await key("KeyX");
+await page.waitForTimeout(250);
+if (await g("window.__game.game.menu.open")) await fail("menu didn't close on X");
+if ((await mode()) !== "map") await fail("not back on map after closing menu");
+
+step = "picture above the bed";
+// (5,4) is the only walkable tile beside the picture. Pressing UP there used to
+// describe the WINDOW; the picture was only reachable by facing left into the
+// bed, which no player would ever try.
+await walkTo(5, 4);
+await g(`window.__game.game.state.facing = "up"`);
+await key("KeyZ");
+await page.waitForTimeout(400);
+const picText = await g("window.__game.game.dialogue.text || ''");
+if (!/drawing/i.test(picText)) await fail(`Z at (5,4) facing up should describe the picture, got: ${JSON.stringify(picText)}`);
+await waitIdle();
+
+step = "intro bed";
+await walkTo(5, 6);
+await g(`window.__game.game.state.facing = "left"`);
+await key("KeyZ");
+await page.waitForTimeout(400);
+await waitIdle(20000); // includes tp to blank page + s_blank_first with tutorial battle
+if ((await mode()) === "battle") {
+  step = "tutorial battle";
+  await runBattlePeace();
+  if (lastBattleRounds < 2) fail(`tutorial battle ended in ${lastBattleRounds} round(s) — the settle rule should force >= 2`);
+  await waitIdle(20000);
+}
+if ((await g("window.__game.game.state.map")) !== "blank_page") fail("not in blank_page");
+await shot("03_blank_page");
+
+step = "guide book pickup";
+await walkTo(12, 7); await g(`window.__game.game.state.facing="down"`); await key("KeyZ");
+await page.waitForTimeout(400);
+const guideText = await g("window.__game.game.dialogue.text || ''");
+if (!/HOW TO TALK/.test(guideText)) await fail(`the guide book didn't open: ${JSON.stringify(guideText)}`);
+await waitIdle(15000);
+if (!(await g("!!window.__game.game.state.inventory.guidebook"))) await fail("guide book not in the inventory after pickup");
+if (!(await flag("guide_taken"))) await fail("guide_taken flag not set");
+
+step = "guide book reads from the pockets";
+await key("KeyX"); // open the menu (Pockets tab is default)
+await page.waitForTimeout(300);
+{
+  const idx = await g(`window.__game.game.menu.itemList().indexOf("guidebook")`);
+  if (idx < 0) await fail("guidebook not listed in the pockets");
+  await g(`window.__game.game.menu.index = ${idx}`);
+  await key("KeyZ");
+  await page.waitForTimeout(400);
+  if (await g("window.__game.game.menu.open")) await fail("menu didn't close to read the guide");
+  await waitChoice(10000);
+  await chooseOption(1); // "How to reach out" page
+  await waitIdle(15000);
+}
+
+step = "lose -> lamp must not leak script state";
+// Losing a battle embedded in a script and continuing from the save must NOT
+// run the script's remaining commands (a boss's page/CG/save chain) against
+// the reloaded state. The flag below is the leak detector.
+await g(`window.__game.game.saveNow()`);
+await g(`window.__game.game.runScript([
+  { t: "battle", troop: "t_sniffle", flagWin: "leak_flagwin" },
+  { t: "flag", key: "leak_after_lose", value: true },
+])`);
+{
+  const tl = Date.now();
+  while ((await mode()) !== "battle") {
+    if (Date.now() - tl > 15000) fail("leak-test battle never started");
+    await page.keyboard.press("KeyZ");
+    await page.waitForTimeout(120);
+  }
+  await g(`(() => { const b = window.__game.game.battle; b.msgQ = []; b.result = "lose"; b.phase = "end"; })()`);
+  while ((await mode()) !== "gameover") {
+    if (Date.now() - tl > 25000) fail("no gameover after forced loss");
+    await page.waitForTimeout(120);
+  }
+  await g(`window.__game.game.gameoverIndex = 0`); // "Return to the last warm lamp"
+  await page.keyboard.press("KeyZ");
+  while ((await mode()) !== "map") {
+    if (Date.now() - tl > 40000) fail("lamp continue never reached the map");
+    await page.waitForTimeout(150);
+  }
+  await waitIdle(15000);
+  if (await flag("leak_after_lose")) await fail("script continued past a lost battle onto the reloaded save");
+  if (await flag("leak_flagwin")) await fail("flagWin set on a lost battle");
+}
+
+step = "lose -> title must not leak either";
+// the other game-over exit: toTitle() has the same script-unwind hazard
+await g(`window.__game.game.runScript([
+  { t: "battle", troop: "t_sniffle" },
+  { t: "flag", key: "leak_via_title", value: true },
+])`);
+{
+  const tl = Date.now();
+  while ((await mode()) !== "battle") {
+    if (Date.now() - tl > 15000) fail("title-leak battle never started");
+    await page.keyboard.press("KeyZ");
+    await page.waitForTimeout(120);
+  }
+  await g(`(() => { const b = window.__game.game.battle; b.msgQ = []; b.result = "lose"; b.phase = "end"; })()`);
+  while ((await mode()) !== "gameover") {
+    if (Date.now() - tl > 25000) fail("no gameover after forced loss (title leg)");
+    await page.waitForTimeout(120);
+  }
+  await g(`window.__game.game.gameoverIndex = 1`); // "Back to the title"
+  await page.keyboard.press("KeyZ");
+  while ((await mode()) !== "title") {
+    if (Date.now() - tl > 40000) fail("never reached the title after loss");
+    await page.waitForTimeout(150);
+  }
+  await page.waitForTimeout(600);
+  if (await flag("leak_via_title")) await fail("script continued past a lost battle under the title screen");
+  // back into the game to resume the playthrough
+  await g(`window.__game.game.title.index = 0`); // Continue
+  await page.keyboard.press("KeyZ");
+  while ((await mode()) !== "map") {
+    if (Date.now() - tl > 60000) fail("Continue after title-leg never loaded");
+    await page.waitForTimeout(150);
+  }
+  await waitIdle(15000);
+}
+
+step = "meadow";
+// starts at (2,7), one tile OUTSIDE the doorway: stepping onto the painted door
+// at column 1 must transfer. Starting at (1,7) would only prove column 0 works.
+await goThrough(2, 7, "left", "meadow_1");
+await shot("04_meadow");
+
+step = "flee grace";
+// stand next to the sniffle chaser, get engaged, flee — then for 2.5s the
+// doodle must flicker and be unable to engage (passively or by bumping)
+{
+  const tf = Date.now();
+  await walkTo(6, 4); // enemy home tile is (7,4)
+  while ((await mode()) !== "battle") {
+    if (Date.now() - tf > 15000) fail("chaser never engaged for the flee test");
+    await page.waitForTimeout(120);
+  }
+  await g(`(() => { const b = window.__game.game.battle; b.msgQ = []; b.result = "flee"; b.phase = "end"; })()`);
+  while ((await mode()) !== "map") {
+    if (Date.now() - tf > 25000) fail("flee never returned to the map");
+    await page.waitForTimeout(100);
+  }
+  if (!((await g("window.__game.game.mapScene.fleeGraceT")) > 0)) await fail("no flee grace after running away");
+  await pressToward("right", 2); // bump straight into the doodle during grace
+  await page.waitForTimeout(400);
+  if ((await mode()) === "battle") await fail("doodle engaged during the flee grace");
+  await page.waitForTimeout(2600); // grace expires; still adjacent -> re-engage
+  const t2 = Date.now();
+  while ((await mode()) !== "battle") {
+    if (Date.now() - t2 > 8000) await fail("doodle never re-engaged after the grace expired");
+    await page.waitForTimeout(150);
+  }
+  await runBattlePeace(); // resolve it for real this time (sets meadow_en1)
+  await waitIdle(15000);
+}
+
+// grab teacup
+await walkTo(3, 4); await g(`window.__game.game.state.facing="up"`); await key("KeyZ"); await waitIdle();
+await walkTo(3, 3); await key("KeyZ"); await waitIdle();
+if (!(await g("!!window.__game.game.state.inventory.teacup"))) fail("no teacup");
+// to meadow_2
+await goThrough(10, 1, "up", "meadow_2");
+step = "biscuit";
+await walkTo(10, 9); await g(`window.__game.game.state.facing="up"`); await key("KeyZ"); await waitIdle(20000);
+if (!(await flag("biscuit_joined"))) fail("biscuit didn't join");
+await shot("05_biscuit");
+// plate + crayon
+await walkTo(2, 4); await g(`window.__game.game.state.facing="down"`); await walkTo(2, 3); await key("KeyZ"); await waitIdle();
+await walkTo(16, 9); await key("KeyZ"); await waitIdle();
+const inv = await g("JSON.stringify(window.__game.game.state.inventory)");
+if (!JSON.parse(inv).cookieplate || !JSON.parse(inv).suncrayon) fail(`missing picnic items: ${inv}`);
+step = "tangle boss";
+await walkTo(9, 7); await g(`window.__game.game.state.facing="up"`); await key("KeyZ");
+await page.waitForTimeout(600);
+// s_meadow_stain runs: dialogue → battle
+const t0 = Date.now();
+while ((await mode()) !== "battle") {
+  if (Date.now() - t0 > 25000) fail("tangle battle never started");
+  const choice = await g("!!window.__game.game.dialogue.choice");
+  if (choice) await chooseOption(0); else await page.keyboard.press("KeyZ");
+  await page.waitForTimeout(150);
+}
+await shot("06_tangle");
+await runBattlePeace();
+if (lastBattleRounds < 4) fail(`TANGLE pacified in ${lastBattleRounds} rounds — boss pacing regressed (want >= 4)`);
+step = "after tangle (cg + interlude)";
+await waitIdle(40000);
+if ((await g("window.__game.game.state.pages")) < 1) fail("no page 1");
+if ((await g("window.__game.game.state.map")) !== "real_bedroom") fail("no interlude 1");
+await shot("07_interlude1");
+
+step = "woods";
+await g(`window.__game.tp("blank_page", 9, 3)`);
+await page.waitForTimeout(300); await waitIdle();
+await goThrough(9, 2, "up", "woods_1");
+await goThrough(9, 1, "up", "woods_2");
+step = "wisp";
+await walkTo(13, 6); await g(`window.__game.game.state.facing="up"`); await key("KeyZ"); await waitIdle(20000);
+if (!(await flag("wisp_joined"))) fail("wisp didn't join");
+await walkTo(3, 10); await key("KeyZ"); await waitIdle();
+if (!(await g("!!window.__game.game.state.inventory.match"))) fail("no match");
+step = "swan boss";
+await walkTo(9, 5); await g(`window.__game.game.state.facing="up"`); await key("KeyZ");
+{
+  const t1 = Date.now();
+  while ((await mode()) !== "battle") {
+    if (Date.now() - t1 > 25000) fail("swan battle never started");
+    const choice = await g("!!window.__game.game.dialogue.choice");
+    if (choice) await chooseOption(0); else await page.keyboard.press("KeyZ");
+    await page.waitForTimeout(150);
+  }
+}
+await shot("08_swan");
+await runBattlePeace();
+await waitIdle(40000);
+if ((await g("window.__game.game.state.pages")) < 2) fail("no page 2");
+await shot("09_interlude2");
+
+step = "bay";
+await g(`window.__game.tp("blank_page", 17, 7)`);
+await page.waitForTimeout(300); await waitIdle();
+await goThrough(17, 7, "right", "bay_1"); // step onto the painted door at col 18
+await walkTo(17, 8); await g(`window.__game.game.state.facing="down"`); await key("KeyZ"); await waitIdle(); // barrel → bulb
+if (!(await g("!!window.__game.game.state.inventory.bulb"))) {
+  await walkTo(15, 8); await g(`window.__game.game.state.facing="right"`); await key("KeyZ"); await waitIdle();
+}
+if (!(await g("!!window.__game.game.state.inventory.bulb"))) fail("no bulb");
+await goThrough(18, 9, "right", "bay_2");
+
+step = "keeper cottage interior";
+await goThrough(15, 9, "up", "keeper_home");
+await shot("10a_keeper_home");
+await walkTo(16, 5); await g(`window.__game.game.state.facing="up"`); await key("KeyZ"); await waitIdle(20000); // photo
+await walkTo(4, 6); await g(`window.__game.game.state.facing="left"`); await key("KeyZ"); await waitIdle(20000); // bed
+await goThrough(9, 12, "down", "bay_2");
+
+step = "keeper boss";
+await walkTo(10, 6); await g(`window.__game.game.state.facing="up"`); await key("KeyZ");
+{
+  const t2 = Date.now();
+  while ((await mode()) !== "battle") {
+    if (Date.now() - t2 > 25000) fail("keeper battle never started");
+    const choice = await g("!!window.__game.game.dialogue.choice");
+    if (choice) await chooseOption(0); else await page.keyboard.press("KeyZ");
+    await page.waitForTimeout(150);
+  }
+}
+await shot("10_keeper");
+await runBattlePeace();
+if (lastBattleRounds < 5) fail(`KEEPER pacified in ${lastBattleRounds} rounds — boss pacing regressed (want >= 5)`);
+await waitIdle(40000);
+if ((await g("window.__game.game.state.pages")) < 3) fail("no page 3");
+
+step = "depths";
+await g(`window.__game.tp("blank_page", 9, 11)`);
+await page.waitForTimeout(300); await waitIdle();
+await walkTo(9, 12); await pressToward("down", 1);
+// choice: Ready? no — s_to_depths has dialogue then tp
+await waitIdle(25000);
+if ((await g("window.__game.game.state.map")) !== "depths_1") fail("no depths");
+await shot("11_depths");
+await goThrough(10, 1, "up", "depths_2"); // s_depths2_enter: page 4 + CG
+// onEnter scripts are QUEUED and start a frame after the transition script
+// ends — waitIdle can slip through that one-frame gap, so give the queued
+// script a beat to begin before driving it
+await page.waitForTimeout(400);
+await waitIdle(60000);
+if ((await g("window.__game.game.state.pages")) < 4) fail("no page 4");
+
+step = "page grants must not stack on re-entry";
+// leaving and re-entering depths_2 replays onEnter — the page 4 grant must be
+// idempotent, or every retreat to a lantern would permanently buff the party
+{
+  const hpBefore = await g("window.__game.game.state.party[0].maxHp");
+  await g(`window.__game.tp("depths_1", 10, 2)`);
+  await page.waitForTimeout(300); await waitIdle(15000);
+  await g(`window.__game.tp("depths_2", 10, 12)`);
+  await page.waitForTimeout(300); await waitIdle(30000);
+  const hpAfter = await g("window.__game.game.state.party[0].maxHp");
+  if (hpAfter !== hpBefore) await fail(`page 4 re-stacked on re-entry: maxHp ${hpBefore} -> ${hpAfter}`);
+  if ((await g("window.__game.game.state.pages")) !== 4) await fail("pages count changed on re-entry");
+}
+
+step = "smudge";
+await walkTo(10, 10); await pressToward("up", 1);
+{
+  const t3 = Date.now();
+  while ((await mode()) !== "battle") {
+    if (Date.now() - t3 > 25000) fail("smudge battle never started");
+    const choice = await g("!!window.__game.game.dialogue.choice");
+    if (choice) await chooseOption(0); else await page.keyboard.press("KeyZ");
+    await page.waitForTimeout(150);
+  }
+}
+await shot("12_smudge");
+await runBattlePeace(120000);
+step = "final choice";
+await waitChoice(40000);
+await shot("13_choice");
+await chooseOption(0); // true ending
+step = "true ending walk";
+await waitIdle(40000);
+if ((await g("window.__game.game.state.map")) !== "real_bedroom") fail("no ending walk");
+await walkTo(9, 12); await pressToward("down", 1); await waitIdle(20000); // hall
+if ((await g("window.__game.game.state.map")) !== "real_hall") fail("no hall in ending");
+// Mom's door is painted across the alcove (cols 4-5); standing in it and
+// pressing Z must listen at her door, not describe bare hallway.
+await walkTo(4, 2);
+await g(`window.__game.game.state.facing = "up"`);
+await key("KeyZ");
+await page.waitForTimeout(400);
+const momText = await g("window.__game.game.dialogue.text || ''");
+if (!/Mom's door/i.test(momText)) await fail(`Z inside Mom's alcove gave: ${JSON.stringify(momText)}`);
+await waitIdle();
+await shot("13b_mom_door");
+await walkTo(9, 12); await pressToward("down", 1);
+await waitChoice(20000); await chooseOption(0); // go outside
+await waitIdle(20000);
+if ((await g("window.__game.game.state.map")) !== "real_street") fail("no street");
+await shot("14_street");
+await walkTo(9, 1); await pressToward("up", 1); await waitIdle(20000);
+if ((await g("window.__game.game.state.map")) !== "hospital_room") fail("no hospital");
+await walkTo(9, 8); await g(`window.__game.game.state.facing="up"`); await key("KeyZ");
+step = "true ending";
+{
+  const t4 = Date.now();
+  while ((await mode()) !== "credits") {
+    if (Date.now() - t4 > 60000) fail("credits never rolled (mode=" + (await mode()) + ")");
+    await page.keyboard.press("KeyZ");
+    await page.waitForTimeout(200);
+  }
+}
+await shot("15_credits");
+
+step = "leaving the credits";
+// pressing Z on the credits fades to the title; this used to null-deref
+// game.credits during the fade and freeze the game on its final screen
+await page.waitForTimeout(4300); // credits accept input after 4s
+await page.keyboard.press("KeyZ");
+{
+  const tc = Date.now();
+  while ((await mode()) !== "title") {
+    if (Date.now() - tc > 15000) fail("credits never returned to the title");
+    await page.waitForTimeout(200);
+  }
+}
+
+if (errors.length) fail("console errors during run");
+console.log("SMOKE OK — full true-ending playthrough, zero console errors");
+if (hasSave) console.log("(note: pre-existing save was present)");
+await browser.close();
+server.close();
+process.exit(0);
