@@ -290,6 +290,32 @@ export class MapScene {
           ctx.textBaseline = "middle";
           ctx.fillText("📖", cx, cy + bob);
         }
+      } else if (e.sprite.startsWith("door:")) {
+        // crayon doors drawn straight onto the page, like the hub's painted ones
+        const tint = e.sprite === "door:pink" ? ["#f2b8c6", "#d98aa2"] : ["#d9b36a", "#b08c4a"];
+        const t = performance.now() / 700;
+        const r = 30 + Math.sin(t + e.x) * 4;
+        const grad = ctx.createRadialGradient(cx, cy, 4, cx, cy, r);
+        grad.addColorStop(0, "rgba(255,240,220,0.5)");
+        grad.addColorStop(1, "rgba(255,240,220,0)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+        ctx.save();
+        ctx.translate(cx, cy + 6);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#5a4634";
+        ctx.fillStyle = tint[0];
+        ctx.beginPath();
+        ctx.moveTo(-18, 26); ctx.lineTo(-18, -14);
+        ctx.arc(0, -14, 18, Math.PI, 0);
+        ctx.lineTo(18, 26); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = tint[1];
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-10, -14, 20, 32);
+        ctx.fillStyle = tint[1];
+        ctx.beginPath(); ctx.arc(9, 6, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
       } else if (e.sprite.startsWith("enemy:")) {
         // during the flee grace doodles flicker — they can see you, they just
         // agreed (reluctantly) to let you go
@@ -333,7 +359,7 @@ export class MapScene {
       const speed = Math.hypot(tx - f.x, ty - f.y);
       // little hops while moving, gentle idle sway when standing
       const hop = speed > 2 ? Math.abs(Math.sin(now / 90 + i * 2)) * 5 : Math.sin(now / 400 + i * 2) * 1.5;
-      const img = assets.img(m.id === "biscuit" ? "sp_biscuit" : "sp_wisp");
+      const img = assets.img(m.id === "biscuit" ? "sp_biscuit" : m.id === "stub" ? "sp_stub" : "sp_wisp");
       if (img) {
         drawSprite(ctx, img, f.x, f.y + 12 - hop, TILE * 1.2, "feet");
       } else {
@@ -484,6 +510,10 @@ export const MAP_NAMES = {
   meadow_2: "Picnic Clearing",
   woods_1: "Origami Woods",
   woods_2: "Candle Shrine",
+  dunes_1: "The Eraser Dunes",
+  dunes_2: "The Smoothing Flat",
+  works_1: "The If-Then Works",
+  works_2: "The Rewind Theatre",
   bay_1: "Button Bay",
   bay_2: "Lighthouse Cliff",
   keeper_home: "The Keeper's Cottage",

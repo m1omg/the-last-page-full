@@ -6,13 +6,14 @@ import { audio } from "./audio.js";
 import { input } from "./input.js";
 
 const NAMES = {
-  mira: "Mira", biscuit: "Sir Biscuit", wisp: "Wisp", ren: "Ren",
+  mira: "Mira", biscuit: "Sir Biscuit", wisp: "Wisp", ren: "Ren", stub: "Stub",
 };
 const PORTRAITS = {
   mira: (face) => `pt_mira_${face || "neutral"}`,
   biscuit: () => "pt_biscuit",
   wisp: () => "pt_wisp",
   ren: () => "pt_ren",
+  stub: () => "pt_stub",
 };
 
 export class Dialogue {

@@ -99,6 +99,86 @@ export const ENEMIES = {
     reward: { item: "cookie" },
   },
 
+
+  // ------------------------------------------------- Eraser Dunes (denial)
+  fine: {
+    name: "Fine", img: "en_fine",
+    hp: 58, atk: 16, def: 5, spd: 9, emotion: "giggly",
+    intro: "Fine holds up a smiling mask on a stick. Behind it, two real eyes are not smiling at all.",
+    acts: [
+      { kind: "attack", mult: 1.0, msg: "{e} bonks you with the mask stick! \"EVERYTHING'S GREAT!\"" },
+      { kind: "emotion", target: "self", emotion: "giggly", msg: "{e} laughs a laugh with no bottom to it." },
+      { kind: "emotion", target: "player", emotion: "gloomy", msg: "{e}'s real eyes look at you over the mask. Your chest goes heavy." },
+    ],
+    calmNeed: 3,
+    reach: [
+      { label: "\"You can put it down.\"", good: true, text: "The mask dips an inch. The real face is tired and small and much better." },
+      { label: "Sit with it", good: true, text: "You sit down next to Fine and say nothing. The mask arm slowly gets tired." },
+      { label: "Peek behind the mask", good: true, text: "You don't grab. You just peek. Fine lets you. That's new for both of you." },
+      { label: "\"Nice smile!\"", good: false, text: "The mask snaps back up, brighter and worse. \"THANKS!! EVERYTHING'S GREAT!!\"" },
+    ],
+    peaceText: "Fine lowers the mask all the way, has one honest little cry, and folds the stick into a walking cane. It waves goodbye with its actual face.",
+    reward: { item: "cookie" },
+  },
+  blanket: {
+    name: "Blanket Bunny", img: "en_blanket",
+    hp: 60, atk: 15, def: 6, spd: 7, emotion: "gloomy",
+    intro: "Blanket Bunny keeps looking over its shoulder at the half of itself that isn't there anymore.",
+    acts: [
+      { kind: "attack", mult: 1.1, msg: "{e} thumps with its one drawn foot!" },
+      { kind: "defend", msg: "{e} tries to hide its missing half behind its ears." },
+      { kind: "emotion", target: "player", emotion: "gloomy", msg: "{e} whispers: \"do you remember the rest of me? anyone?\"" },
+    ],
+    calmNeed: 3,
+    reach: [
+      { label: "Describe its tail", good: true, text: "\"Round. Fluffy. Cotton-white,\" you say, like you can see it. The faint pencil lines get braver." },
+      { label: "Hold the faded paw", good: true, text: "You hold the paw that's only outline. It squeezes back. Outlines can do that, apparently." },
+      { label: "Draw one line back", good: true, text: "You re-draw a single line of its hip, slow and careful. It watches like it's remembering how to be." },
+      { label: "\"It's gone.\"", good: false, text: "The pencil lines go fainter. Wrong thing. Very wrong thing." },
+    ],
+    peaceText: "Blanket Bunny looks over its shoulder one more time... and its missing half is a little less missing. It hops off, uneven and alive.",
+    reward: { item: "juice" },
+  },
+  // ------------------------------------------------- If-Then Works (bargaining)
+  ticktick: {
+    name: "Tick-Tick", img: "en_ticktick",
+    hp: 66, atk: 17, def: 6, spd: 14, emotion: "grumpy",
+    intro: "Tick-Tick vibrates with terrible urgency. It is late for something that already happened.",
+    acts: [
+      { kind: "attack", mult: 1.2, msg: "{e} rings both bell-ears right in your face!" },
+      { kind: "attack", mult: 0.9, msg: "{e} swats with its pendulum tail!" },
+      { kind: "emotion", target: "player", emotion: "grumpy", msg: "{e} ticks louder and louder. HURRY. HURRY. Your teeth clench." },
+    ],
+    calmNeed: 3,
+    reach: [
+      { label: "\"There's time.\"", good: true, text: "The ticking stumbles. \"...there is?\" There is. There's all of it, in fact." },
+      { label: "Breathe on the count", good: true, text: "You breathe in for four ticks, out for four. Tick-Tick's pendulum slows to match." },
+      { label: "Cover the bells, gently", good: true, text: "You rest your palms on its bell-ears. Warm quiet. It leans into it." },
+      { label: "Check the time", good: false, text: "You look at its face like a clock. It shrieks - THAT'S ALL ANYONE DOES." },
+    ],
+    peaceText: "Tick-Tick winds all the way down, sighs like a settling house, and starts ticking again - slow, even, unhurried. Bedtime-story speed.",
+    reward: { item: "juice" },
+  },
+  redo: {
+    name: "Redo Mouse", img: "en_redo",
+    hp: 72, atk: 16, def: 12, spd: 8, emotion: "gloomy",
+    intro: "Redo Mouse pushes its little cart around the same dotted circle, wearing the path into a groove.",
+    acts: [
+      { kind: "attack", mult: 1.1, msg: "{e} runs you over with the eraser cart!" },
+      { kind: "defend", msg: "{e} hides under the cart. The wheels keep turning." },
+      { kind: "attack", mult: 1.3, msg: "{e} does the loop FASTER, like that will change where it goes!" },
+    ],
+    calmNeed: 3,
+    reach: [
+      { label: "Step into the circle", good: true, text: "You stand on the dotted line. The mouse stops. Nobody ever stood there before." },
+      { label: "\"One more lap won't fix it.\"", good: true, text: "The mouse looks at its groove, then at you. Its key slows half a turn." },
+      { label: "Point somewhere new", good: true, text: "You point off the path, at nothing in particular. The mouse stares like you invented direction." },
+      { label: "Push the cart for it", good: false, text: "You push. The mouse panics - the loop must be done RIGHT, which means BY IT, FOREVER." },
+    ],
+    peaceText: "Redo Mouse tips its cart over on purpose. Erasers everywhere. It steps over the dotted line like a border, and just... walks. Anywhere. Wobbly with freedom.",
+    reward: { item: "sandwich" },
+  },
+
   // ------------------------------------------------------------- bosses
   tangle: {
     name: "TANGLE", img: "boss_tangle", boss: true,
@@ -163,6 +243,71 @@ export const ENEMIES = {
     peaceText: "The Bell Keeper kneels and offers you the bell. It's tiny in your hand. It rings once, clear and harmless, like a bicycle passing safely by.",
     winText: "The Keeper bows, cracks spreading, and comes apart into white sand. The little bell lands softly on top. It doesn't ring.",
   },
+
+  smoother: {
+    name: "THE SMOOTHER", img: "boss_smoother", boss: true,
+    hp: 170, atk: 18, def: 7, spd: 8, emotion: "giggly",
+    intro: "The Smoother smiles with its whole soft face. \"NOTHING IS WRONG HERE,\" it explains, kindly. Inside its belly, faint erased doodles drift like fish.",
+    acts: [
+      { kind: "attack", mult: 1.1, msg: "{e} pats you flat with a soft enormous hand. It means well. It says so." },
+      { kind: "attack", mult: 0.9, targets: "all", msg: "{e} sweeps its dusting brush. The air fills with pink crumbs of things that used to be drawn!" },
+      { kind: "emotion", target: "self", emotion: "giggly", msg: "{e} smiles harder. \"SEE? ALL BETTER. ALL SMOOTH.\"" },
+      { kind: "emotion", target: "player", emotion: "gloomy", msg: "{e} offers, gently: \"I could smooth yours too. The hurting picture. You'd never have to look again.\"" },
+    ],
+    calmNeed: 6,
+    reach: [
+      { label: "\"It WAS drawn.\"", good: true, text: "The doodles in its belly press against the pale skin, like they heard. The smile flickers." },
+      { label: "Name the erased dog", good: true, text: "\"There was a dog. Right there. It had a spot over one eye.\" The Smoother's brush hand trembles." },
+      { label: "\"Smooth isn't healed.\"", good: true, text: "The Smoother opens its eyes for the first time. They are very old and very tired of smiling." },
+      { label: "Ask it to erase the pain", good: false, text: "It brightens terribly and raises the brush. Wrong. WRONG. You want to remember - you want to WANT to remember." },
+    ],
+    rallyText: "The Smoother's smile goes wide and thin as paper. \"LAST OFFER,\" it says, still kind. \"BLANK IS PAINLESS.\"",
+    peaceText: "The Smoother exhales a lifetime of held smiles. The ghost doodles pour out of it like fish returning to a river, faint but swimming. \"...they stayed,\" it whispers. \"I rubbed and rubbed, and they stayed.\" It looks almost happy. Actually happy, this time.",
+    winText: "The Smoother comes apart into a drift of pink crumbs. The ghost doodles it held escape upward like bubbles, and somewhere in the dunes, a faint dog barks once.",
+  },
+  oracle: {
+    name: "THE WIND-UP ORACLE", img: "boss_oracle", boss: true,
+    hp: 160, atk: 19, def: 7, spd: 9, emotion: "gloomy",
+    intro: "The Wind-Up Oracle's key turns slowly, slowly. \"WELCOME BACK,\" it says, though you have never been here. \"EVERYONE COMES BACK. REWIND?\"",
+    acts: [
+      { kind: "attack", mult: 1.2, msg: "{e} snaps its tin fingers - the moment replays, and the flinch hits you fresh!" },
+      { kind: "attack", mult: 0.9, targets: "all", msg: "{e} opens the stage curtains. Everyone watches the little paper figures freeze mid-step. It costs something every time." },
+      { kind: "emotion", target: "player", emotion: "gloomy", msg: "{e} offers the hourglass where the sand falls up. \"ONE MORE IF. ON THE HOUSE.\"" },
+      { kind: "defend", msg: "{e} winds its own key tight and waits. Patience is its whole body." },
+    ],
+    calmNeed: 7,
+    reach: [
+      { label: "\"No trade.\"", good: true, text: "The Oracle's smile doesn't move, but the key stutters. Nobody has ever said no before." },
+      { label: "Watch the play to the END", good: true, text: "You make yourself watch the whole moment - past the freeze, to the after. The Oracle watches YOU instead. It has never seen the after." },
+      { label: "\"Ifs aren't doors.\"", good: true, text: "\"They're WINDOWS,\" the Oracle snaps - the first crack in its voice. Windows you can't climb through. It knows. It's known for ages." },
+      { label: "Wind its key for it", good: true, text: "You turn the key one gentle notch - not to rewind. Just so it doesn't run down alone. Its glass-bead eyes go soft." },
+      { label: "Ask what it would cost", good: false, text: "The Oracle names the price. It's exactly what you have. It's ALWAYS exactly what you have. The booth gets colder." },
+    ],
+    rallyText: "The Oracle's key spins backward on its own. Every gauge in the theatre swings to the same moment. \"FINAL SHOWING,\" it announces.",
+    peaceText: "The Oracle takes the hourglass... and turns it the RIGHT way up. Sand falls down, the way time does. \"THE THEATRE IS CLOSING,\" it says, and sounds relieved, like a shopkeeper at the end of the longest day. The curtains close on the frozen moment, gently, like tucking it in.",
+    winText: "The Oracle's key winds down and out. The booth folds flat, the tickets scatter, and the little paper figures on the stage finally finish their step, walk off, and are gone.",
+  },
+  unfinished: {
+    name: "THE UNFINISHED ONE", img: "boss_unfinished", boss: true,
+    hp: 330, atk: 25, def: 10, spd: 10, emotion: "grumpy", rotate: true, calmNeed: 10,
+    intro: "Something enormous uncurls: half of it magnificent, half of it construction lines. The finished eye fixes on you. \"YOU STOPPED,\" it says. \"YOU NEVER EVEN NAMED ME.\"",
+    acts: [
+      { kind: "attack", mult: 1.3, msg: "{e} strikes with the finished claw - beautiful and precise!" },
+      { kind: "attack", mult: 0.9, targets: "all", msg: "{e} sweeps its sketch-wing. The construction lines cut like paper edges!" },
+      { kind: "emotion", target: "self", emotion: "grumpy", msg: "{e} rakes its own scaffolding. \"WHY DID YOU START ME IF YOU WEREN'T GOING TO FINISH?\"" },
+      { kind: "emotion", target: "player", emotion: "gloomy", msg: "{e}'s unfinished eye - the circle with the cross - looks at you. It can't see. It's never seen." },
+    ],
+    reach: [
+      { label: "\"You scared me.\"", good: true, text: "The truth. You drew it too big, too real, and eleven-year-old you slammed the book. It blinks its good eye. It never considered being TOO MUCH." },
+      { label: "Name it, finally", good: true, text: "\"EMBER,\" you say. The name you almost gave it. The scaffolding shivers like it heard music." },
+      { label: "Trace one line, no eraser", good: true, text: "You finish one line of its wing freehand, wobbly, honest. It holds absolutely still, the way you hold still for someone brave." },
+      { label: "\"Unfinished isn't unloved.\"", good: true, text: "Both eyes - the seeing and the unseeing - point at you. Somewhere inside, a pencil line un-tenses." },
+      { label: "Promise to redraw it", good: false, text: "\"REDRAW?\" it roars. It doesn't want to be REPLACED. It wants to be CONTINUED. The scaffolding bristles." },
+    ],
+    rallyText: "The Unfinished One rears to its full height - and for one second the sketch half fills itself in with pure imagination, vast and burning. \"THIS IS WHAT I COULD HAVE BEEN.\"",
+    peaceText: "Ember settles. The construction lines don't fill in - but they stop trembling, and that's not the same as unfinished. That's UNDERWAY. It presses its huge finished cheek against your whole body, once, carefully. \"KEEP THE BOOK OPEN,\" it says. \"I LIKE HEARING YOU DRAW.\"",
+    winText: "The Unfinished One comes apart the way a sketch does - line by line, in reverse order of being loved. The last thing to fade is the finished eye, still looking at you. You finished something today. It isn't the feeling you expected.",
+  },
   smudge: {
     name: "THE SMUDGE", img: "boss_smudge", boss: true, final: true,
     hp: 999, atk: 16, def: 99, spd: 1, emotion: "neutral",
@@ -173,12 +318,13 @@ export const ENEMIES = {
       { kind: "emotion", target: "player", emotion: "gloomy", msg: "The ink whispers with your own voice: \"It was your fault.\"" },
       { kind: "idle", msg: "The Smudge waits. It has all the time you refuse to spend." },
     ],
-    calmNeed: 3,
+    calmNeed: 4,
     reachStory: true, // options unlock from collected pages, in order
     reach: [
       { label: "Remember the fort", good: true, page: 1, text: "The fairy lights. The flashlight. Two kids drawing one world. The ink flinches from the warmth of it." },
       { label: "Remember the swings", good: true, page: 2, text: "The sky. The swan-shaped cloud. Ren yelling \"WE'RE FLYING!\" The ink thins. The outline inside is clearer now." },
-      { label: "Say the true thing", good: true, page: 3, text: "\"I said it should've been you who moved away. I didn't mean it. I'm sorry. I'M SORRY.\" The ink goes still." },
+      { label: "Remember the promise", good: true, page: 3, text: "Two hooked pinkies over an open book. \"Before summer ends.\" A promise doesn't stop being one because it got hard. The ink trembles." },
+      { label: "Say the true thing", good: true, page: 4, text: "\"I said it should've been you who moved away. I didn't mean it. I'm sorry. I'M SORRY.\" The ink goes still." },
     ],
     peaceText: "The Smudge doesn't shatter. It settles - like ink finally drying - into the shape of the last page. Waiting for an ending.",
     winText: "",
@@ -199,4 +345,13 @@ export const TROOPS = {
   t_boss_swan: ["swan"],
   t_boss_keeper: ["keeper"],
   t_boss_smudge: ["smudge"],
+  t_fine: ["fine"],
+  t_dunes_pair: ["fine", "blanket"],
+  t_blanket: ["blanket"],
+  t_ticktick: ["ticktick"],
+  t_works_pair: ["ticktick", "redo"],
+  t_redo: ["redo"],
+  t_boss_smoother: ["smoother"],
+  t_boss_oracle: ["oracle"],
+  t_boss_unfinished: ["unfinished"],
 };

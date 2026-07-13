@@ -148,6 +148,19 @@ export const SCRIPTS = {
         { label: "Breathe first", then: [ mira("neutral", "One more breath. Okay.") ] },
       ] },
     ], else: [
+    { t: "if", flag: "failed_walk_active", is: true, then: [
+      n("Your shoes. Your jacket. The door.\nYou know where the hospital is. Everyone knows where the hospital is."),
+      { t: "choice", options: [
+        { label: "Go", then: [
+          { t: "sfx", name: "sfx_door" },
+          { t: "fade", ms: 1000 },
+          { t: "tp", map: "real_street", x: 9, y: 11, facing: "up" },
+          { t: "unfade", ms: 1400 },
+          n("The summer street, too bright, too wide.\nOne crossing between you and the corner. One corner between you and it."),
+        ] },
+        { label: "Not today", then: [ mira("gloomy", "...the shoes go back by the door. They're good at waiting.") ] },
+      ] },
+    ], else: [
       { t: "if", flag: "interlude3", is: true, then: [
         n("A letter sits by the door, opened and read many times. From Ren's parents.\n'...visitors help, the doctors say. He'd want it to be you, Mira.'"),
         mira("gloomy", "...I can't. What if he wakes up and remembers what I said?"),
@@ -155,6 +168,7 @@ export const SCRIPTS = {
       ], else: [
         n("The front door. Outside is the long summer street, and pity-faces,\nand the corner where you're not allowed to think about what happened.\nYou haven't gone out there without Mom in weeks."),
       ] },
+    ] },
     ] },
   ],
 
@@ -220,6 +234,10 @@ export const SCRIPTS = {
         n("Page three. A stick figure hiding behind a giant cookie. 'STEADY halves what\nhits you and breathes 2 ink back. Snacks work on friends, not on you-know-what.\nWisp's warm glow mends. Sir Biscuit's wall covers EVERYBODY.'"),
         n("'Warm lanterns save the story and mend the whole party.\nBig sad things get a SECOND WIND when they're half done - don't panic.\nThat's when they most need you to keep going.'"),
       ] },
+      { label: "Charms & the journal", then: [
+        n("A newer page, in your handwriting only. 'CHARMS: little braveries you can\nwear. One per friend. Choose a charm in POCKETS to pick who wears it.'"),
+        n("'THE FRIEND JOURNAL (in POCKETS, third tab): every doodle we talk down\ngets a page. Ren would want ALL of them smiling. So do I now, I think.\nSomething big and unfinished is waiting on it.'"),
+      ] },
       { label: "Put it down", then: [] },
     ] },
   ],
@@ -237,15 +255,32 @@ export const SCRIPTS = {
     ] },
   ],
   s_to_bay: [
-    { t: "iflt", key: "pages", value: 2, then: [
+    { t: "iflt", key: "pages", value: 3, then: [
       n("The yellow door is swollen shut with ink. Through the keyhole you can\nhear the sea, going shhh, shhh, like it's comforting someone."),
     ], else: [
       { t: "fade", ms: 600 }, { t: "sfx", name: "sfx_door" },
       { t: "tp", map: "bay_1", x: 9, y: 12, facing: "up" }, { t: "unfade", ms: 600 },
     ] },
   ],
+  s_to_dunes: [
+    { t: "iflt", key: "pages", value: 2, then: [
+      n("A pink door stands drawn on the page, soft as a whisper.\nA note in crayon: 'NOTHING WRONG IN HERE. NOTHING TO SEE. ALL SMOOTH. - mgmt'"),
+      mira("neutral", "...that's a lot of nothing-wrong for one little door."),
+    ], else: [
+      { t: "fade", ms: 600 }, { t: "sfx", name: "sfx_door" },
+      { t: "tp", map: "dunes_1", x: 10, y: 12, facing: "up" }, { t: "unfade", ms: 600 },
+    ] },
+  ],
+  s_to_works: [
+    { t: "iflt", key: "pages", value: 4, then: [
+      n("A brass-colored door, drawn with a ruler for once. From behind it,\nfaint ticking - hundreds of clocks, all disagreeing."),
+    ], else: [
+      { t: "fade", ms: 600 }, { t: "sfx", name: "sfx_door" },
+      { t: "tp", map: "works_1", x: 10, y: 12, facing: "up" }, { t: "unfade", ms: 600 },
+    ] },
+  ],
   s_to_depths: [
-    { t: "iflt", key: "pages", value: 3, then: [
+    { t: "iflt", key: "pages", value: 5, then: [
       n("The smudged door breathes cold on your face.\nIt isn't locked. It's just... more door than you can open yet."),
       mira("gloomy", "Not yet. I'm not... we're not ready. The pages. We need the pages."),
     ], else: [
@@ -407,6 +442,10 @@ export const SCRIPTS = {
       say("Fireflies", "she won't sing... the swan won't sing... she folded her song away..."),
     ] },
   ],
+  s_fight_fine: [ { t: "battle", troop: "t_fine", flagWin: "dunes_en1" } ],
+  s_fight_dunes_pair: [ { t: "battle", troop: "t_dunes_pair", flagWin: "dunes_en2" } ],
+  s_fight_ticktick: [ { t: "battle", troop: "t_ticktick", flagWin: "works_en1" } ],
+  s_fight_works_pair: [ { t: "battle", troop: "t_works_pair", flagWin: "works_en2" } ],
   s_fight_thornbud: [ { t: "battle", troop: "t_thornbud", flagWin: "woods_en1" } ],
   s_fight_woods_pair: [ { t: "battle", troop: "t_woods_pair", flagWin: "woods_en2" } ],
   s_woods2_to_woods: [
@@ -490,6 +529,228 @@ export const SCRIPTS = {
     ] },
   ],
 
+
+  // ================================================================ ERASER DUNES
+  s_dunes_to_blank: [
+    { t: "fade", ms: 600 }, { t: "tp", map: "blank_page", x: 3, y: 3, facing: "down" }, { t: "unfade", ms: 600 },
+  ],
+  s_dunes_to_dunes2: [
+    { t: "fade", ms: 600 }, { t: "tp", map: "dunes_2", x: 9, y: 12, facing: "up" }, { t: "unfade", ms: 600 },
+  ],
+  s_dunes2_to_dunes: [
+    { t: "fade", ms: 600 }, { t: "tp", map: "dunes_1", x: 10, y: 1, facing: "down" }, { t: "unfade", ms: 600 },
+  ],
+  s_dunes_tree: [
+    n("Half a tree. The green half rustles like any self-respecting tree.\nThe other half is pale pencil ghost-lines, going quieter every day."),
+    { t: "if", flag: "stub_joined", is: true, then: [
+      say("stub", "I TRIED, OKAY. one crayon against a whole desert of un-drawing.\nbut trying counts. write that down."),
+    ], else: [] },
+  ],
+  s_dunes_bench: [
+    { t: "if", flag: "bench_memory_done", is: true, then: [
+      n("The bench is still half-erased. But somebody sat here anyway,\nand benches remember that sort of thing."),
+    ], else: [
+      { t: "if", flag: "stub_joined", is: false, then: [
+        n("A bench, fading from the left. Sitting on it feels like sitting\nnext to someone who's about to leave."),
+      ], else: [
+        n("A bench, fading from the left. There's room for everyone, barely."),
+        { t: "choice", options: [
+          { label: "Sit for a while", then: [
+            n("You all squeeze on. Sir Biscuit takes the ghost half and reports it\n'perfectly load-bearing'. Wisp perches on the armrest. Stub lies flat\nand calls it 'crayon yoga'."),
+            say("stub", "you know what benches are FOR? being between places.\nyou don't have to be anywhere yet. that's the whole invention."),
+            n("For one long minute, nobody is anywhere yet. It's the best minute in days."),
+            n("Under the armrest, something small is taped: a WARM RIBBON.\nRed as a certain hair-ribbon. Somebody left it for exactly this bench."),
+            { t: "sfx", name: "sfx_victory" },
+            { t: "give", item: "charm_ribbon" },
+            n("(Got the WARM RIBBON! A charm - open POCKETS and choose it\nto give it to a friend to wear.)"),
+            { t: "flag", key: "bench_memory_done", value: true },
+          ] },
+          { label: "Not right now", then: [ say("stub", "the bench will wait. benches are PATIENT. it's their one move.") ] },
+        ] },
+      ] },
+    ] },
+  ],
+  s_dunes_sign: [
+    n("A big friendly sign, freshly repainted: nothing written on it at all.\nIt used to say something. You can tell by how hard it isn't saying it now."),
+  ],
+  s_dunes_picnic: [
+    n("A picnic in progress, permanently. The tea is poured, the flowers fresh,\nthe blanket crumbless. Nobody is here. Nobody has been here in a while.\nIt's a lovely day, insists the picnic. It's ALWAYS a lovely day."),
+  ],
+  s_meet_stub: [
+    n("Somebody small is hurling itself at the ghost half of the tree,\nleaving little yellow streaks that fade as fast as they land."),
+    say("???", "STAY. COLORED. IN. - oh great, witnesses."),
+    mira("neutral", "...you're Ren's sun crayon. From our pocket! You've been GONE for-"),
+    say("stub", "BUSY. i've been BUSY. somebody's un-drawing this whole page and the\nmanagement is a giant eraser with a customer-service smile, and I -"),
+    say("stub", "- i'm the only yellow left out here, okay? suns don't quit.\nthey set. TEMPORARILY."),
+    mira("neutral", "We're going to the Smoothing Flat to talk to the management.\nCome with us. One crayon alone can't fix a desert... but together counts."),
+    say("stub", "...together, huh. wisp taught you that one? fine. FINE. but i draw\nthe suns. that's non-negotiable. everybody gets a sun."),
+    { t: "sfx", name: "sfx_victory" },
+    { t: "flag", key: "stub_joined", value: true },
+    { t: "join", member: "stub" },
+    n("STUB joined the party!"),
+    say("biscuit", "Welcome, Sir Stub! You may guard my left flank. It is the crumbliest."),
+  ],
+  s_monolith: [
+    { t: "if", flag: "dunes_boss_done", is: true, then: [
+      n("The great eraser stands where it stood. But things stay drawn near it now.\nRetired, not gone. There's a difference, it turns out."),
+    ], else: [
+      n("A monument of pale rubber, worn round by work.\nThe air here tastes like paper dust and nothing-happened."),
+    ] },
+  ],
+  s_dunes_boss: [
+    n("The pale flat opens around you. Ghost-outlines everywhere - a dog,\na kite, a little house - all rubbed to almost-nothing, all still trying."),
+    say("stub", "there. THERE. that's the management. smile's already on. brace."),
+    n("Something vast and soft unfolds from behind the monolith, beaming."),
+    { t: "battle", troop: "t_boss_smoother", boss: true, flagWin: "dunes_boss_done",
+      onPeace: [
+        say("stub", "...it kept them. it kept every single one it ever erased.\nthat's the saddest filing system i've ever seen."),
+        n("Where the Smoother stood, the ghost-outlines glow faintly warmer.\nA torn page drifts down from the top of the monolith."),
+      ],
+      onWin: [
+        say("stub", "...the crumbs. even the crumbs are trying to un-erase.\nlet's just... let's take the page and be gentle a while."),
+        n("A torn page drifts down from the top of the monolith."),
+      ] },
+    { t: "page", n: 3 },
+    { t: "cg", img: "cg_memory_5", lines: [
+      "The page shows a treehouse at golden hour, drawn in crayon.",
+      "Two kids, two hooked pinkies, one open sketchbook between them.",
+      "\"Before summer ends,\" Ren said, \"we finish the WHOLE book. Swear.\"",
+      "You swore. The sun went down like it was in on it.",
+      "It is still summer. Technically. That page has been counting.",
+    ] },
+    mira("gloomy", "We swore on the SUN, Stub. And then I stopped drawing."),
+    say("stub", "then it's a good thing the sun came back, isn't it. i'm RIGHT HERE.\nwe finish the book. that's what the promise is FOR."),
+    n("The dunes blur. Morning is reaching in through the pink..."),
+    { t: "fade", ms: 1500 }, { t: "stopbgm" },
+    { t: "flag", key: "interlude_dunes", value: true },
+    { t: "tp", map: "real_bedroom", x: 6, y: 6, facing: "down" },
+    { t: "bgm", name: "bgm_real" },
+    { t: "unfade", ms: 1500 },
+    n("Saturday. Mom's voice through the wall, low, on the phone:\n\"...last night? But he's stable NOW? Okay. Okay. Thank you. Okay.\"\nThree okays. That's one more than fine and one less than crying."),
+    n("You hold very still until her door clicks shut.\nSome mornings the bravest thing in the apartment is the kettle."),
+    { t: "save" },
+  ],
+  s_ghost_dog: [
+    { t: "if", flag: "dog_redrawn", is: true, then: [
+      n("The little dog gleams in fresh crayon, one ear yellow because Stub\ninsisted. It chases its tail in a circle, exactly where it was erased."),
+    ], else: [
+      { t: "if", flag: "stub_joined", is: true, then: [
+        n("A dog-shaped almost-nothing. A spot over one eye, if you squint\nwith your whole heart."),
+        say("stub", "i remember this guy!! page thirty-one! ren drew the bark wrong and\nyou LIKED it wrong! come on - you trace, i'll color. TEAMWORK."),
+        { t: "choice", options: [
+          { label: "Redraw the dog together", then: [
+            n("You trace. Stub colors. The lines wobble, which is correct -\nthey always wobbled. A tail happens. The tail WAGS."),
+            { t: "sfx", name: "sfx_victory" },
+            n("The little dog shakes itself from ears to tail, sneezes a puff of\ncrayon dust, and drops something at your feet: a RAINY-DAY STAMP."),
+            { t: "give", item: "charm_stamp" },
+            n("(Got the RAINY-DAY STAMP! A charm - choose it in POCKETS\nto give it to a friend to wear.)"),
+            { t: "flag", key: "dog_redrawn", value: true },
+          ] },
+          { label: "Later", then: [ say("stub", "he's waited this long. dogs are professionals at waiting.") ] },
+        ] },
+      ], else: [
+        n("A dog-shaped almost-nothing, rubbed down to a wish.\nSomething yellow could fix this. Somebody yellow."),
+      ] },
+    ] },
+  ],
+  s_ghost_kite: [
+    n("A kite, mostly erased. Its string is the last solid line,\nstill tied to a rock so it can't blow away. Somebody loved it enough\nto tie it down and not enough to finish it. Or the other way around."),
+  ],
+  s_ghost_house: [
+    n("A little house, down to pencil bones. The door was drawn OPEN.\nWhoever lived here believed in visitors."),
+  ],
+
+  // ================================================================ IF-THEN WORKS
+  s_works_to_blank: [
+    { t: "fade", ms: 600 }, { t: "tp", map: "blank_page", x: 16, y: 3, facing: "down" }, { t: "unfade", ms: 600 },
+  ],
+  s_works_to_works2: [
+    { t: "fade", ms: 600 }, { t: "tp", map: "works_2", x: 9, y: 12, facing: "up" }, { t: "unfade", ms: 600 },
+  ],
+  s_works2_to_works: [
+    { t: "fade", ms: 600 }, { t: "tp", map: "works_1", x: 2, y: 12, facing: "right" }, { t: "unfade", ms: 600 },
+  ],
+  s_cubbyholes: [
+    n("Cubbyholes stuffed with rolled-up yesterdays, sorted by regret.\nEach scroll is one moment, rewound tight and filed where nobody\nhas to read it. The shelf is completely full."),
+  ],
+  s_gears: [
+    n("Great cardboard gears, painted with clouds and stars, all turning\neach other. None of them turns anything else. That's the whole machine:\neffort, beautifully connected to more effort."),
+  ],
+  s_conveyor: [
+    { t: "if", flag: "parcel_freed", is: true, then: [
+      n("The conveyor still loops, but there's a gap in the parade now,\nwhere one parcel got to stop being carried."),
+    ], else: [
+      { t: "if", flag: "got_winder", is: true, then: [
+        n("The parcels go around and around. One of them, small and dented,\nrattles like it wants OUT. The belt's release crank is missing its winder."),
+        { t: "choice", options: [
+          { label: "Fit the little winder", then: [
+            n("Click. One gentle quarter-turn. The belt sighs, slows,\nand lets the small dented parcel roll off into your hands."),
+            n("Inside: a CRUMB LOCKET, and a note in handwriting you don't know:\n'was saving this for the right moment. there was no right moment.\nthere was only saving.'"),
+            { t: "sfx", name: "sfx_victory" },
+            { t: "give", item: "charm_locket" },
+            n("(Got the CRUMB LOCKET! A charm - choose it in POCKETS\nto give it to a friend to wear.)"),
+            { t: "flag", key: "parcel_freed", value: true },
+          ] },
+          { label: "Leave it be", then: [ n("The parcel goes around again. And again. It's very good at it by now.") ] },
+        ] },
+      ], else: [
+        n("A conveyor of parcels, going in a perfect loop. Nothing is delivered.\nNothing is lost. Nothing is opened. The system works flawlessly."),
+      ] },
+    ] },
+  ],
+  s_find_winder: [
+    { t: "sfx", name: "sfx_confirm" },
+    n("Between two gear teeth: a tiny brass WINDER, the kind that fits\nsomething small and stuck. Somebody dropped it mid-errand, years ago."),
+    { t: "give", item: "winder" }, { t: "flag", key: "got_winder", value: true },
+  ],
+  s_works_boss: [
+    n("The cushions face the stage. The stage faces one moment.\nThe moment is a street corner, and two small paper figures, mid-step."),
+    say("wisp", "oh. oh no. mira, the play. the play is-"),
+    mira("gloomy", "I know what the play is."),
+    n("In the booth beside the stage, a key begins to turn, all by itself."),
+    { t: "battle", troop: "t_boss_oracle", boss: true, flagWin: "works_boss_done",
+      onPeace: [
+        n("The curtains close, gently, like tucking someone in.\nOn the empty stage, a torn page flutters down through the spotlight."),
+        say("stub", "...it just wanted somebody to say no. all this brass and it never\nonce got a NO. imagine."),
+      ],
+      onWin: [
+        n("The theatre is very quiet. The two paper figures finish their step\nat last, walk off the stage, and are gone.\nA torn page settles in the spotlight where they stood."),
+      ] },
+    { t: "page", n: 5 },
+    { t: "cg", img: "cg_memory_6", lines: [
+      "The page shows a windowsill in the rain, drawn in crayon.",
+      "A walkie-talkie with its little light off. A drawing stopped mid-line.",
+      "The week after the fight, the channel stayed silent seven days.",
+      "You both checked it every night. You found that out later, and it broke",
+      "the thing in you that had been calling the silence 'proof'.",
+    ] },
+    mira("gloomy", "We wasted a whole WEEK being right at each other. And then there\nwasn't a week left to waste."),
+    n("The theatre lights dim, kindly. Morning is coming through the curtains..."),
+    { t: "fade", ms: 1500 }, { t: "stopbgm" },
+    { t: "flag", key: "interlude_works", value: true },
+    { t: "tp", map: "real_bedroom", x: 6, y: 6, facing: "down" },
+    { t: "bgm", name: "bgm_real" },
+    { t: "unfade", ms: 1500 },
+    n("Wednesday. Your shoes are by the door. They've been by the door all week.\nToday they look almost possible."),
+    { t: "flag", key: "failed_walk_active", value: true },
+    { t: "save" },
+  ],
+  s_lever: [
+    n("A lever the size of your whole arm, labeled with an arrow curving\nbackward. It's been pulled so many times the handle is worn glass-smooth.\nIt doesn't budge for you. Maybe it knows you don't really want it to."),
+  ],
+  s_clockwall: [
+    n("A wall of clocks, every face a different almost-time.\nNone of them tick forward. All of them tick."),
+  ],
+  s_tickets: [
+    n("Drifts of used tickets, hip-deep. Every one is stamped ADMIT ONE\nin feeling rather than letters, and every one was used more than once.\nRewatching costs extra. It always costs extra."),
+  ],
+  s_stage: [
+    { t: "if", flag: "works_boss_done", is: true, then: [
+      n("The curtains are drawn, soft and final. From behind them, very faint,\nthe sound of a street where everyone got home fine."),
+    ], else: [
+      n("The stage replays one moment: two paper figures on a corner, mid-step.\nIt rewinds. Mid-step. Rewinds. Mid-step. The spotlight never blinks."),
+    ] },
+  ],
   // ================================================================ BAY
   s_bay_to_blank: [
     { t: "fade", ms: 600 }, { t: "tp", map: "blank_page", x: 17, y: 7, facing: "left" }, { t: "unfade", ms: 600 },
@@ -609,7 +870,7 @@ export const SCRIPTS = {
             n("The light sweeps over white sand where the Keeper stood.\nThe little bell sits on top, finally quiet."),
           ] },
         n("On the lighthouse steps, pinned under the bell: a torn page."),
-        { t: "page", n: 3 },
+        { t: "page", n: 4 },
         { t: "cg", img: "cg_memory_3", lines: [
           "The page is ripped down the middle and taped back wrong, so the two kids",
           "face away from each other forever.",
@@ -654,12 +915,12 @@ export const SCRIPTS = {
     // iflt pages<4: the whole arrival beat (and its page grant) plays exactly
     // once — retreating to a lantern and coming back must not replay the CG
     { t: "if", flag: "smudge_done", is: true, then: [], else: [
-      { t: "iflt", key: "pages", value: 4, then: [
+      { t: "iflt", key: "pages", value: 6, then: [
       { t: "stopbgm" },
       n("The ink here is perfectly still.\nUnder its surface, enormous and faint, someone half-drawn is waiting."),
       { t: "sfx", name: "sfx_heartbeat" },
       n("On the clean island in the center, one torn page lies alone.\nThe last one. You know it before you touch it."),
-      { t: "page", n: 4 },
+      { t: "page", n: 6 },
       { t: "cg", img: "cg_memory_4", lines: [
         "Rain. The crosswalk. The sketchbook open on the wet asphalt,",
         "its colors bleeding out like the day itself.",
@@ -679,7 +940,39 @@ export const SCRIPTS = {
   ],
   s_smudge_confront: [
     { t: "if", flag: "smudge_done", is: true, then: [
-      n("The ink is drying into paper. The page is almost ready."),
+      { t: "if", flag: "mending", is: true, then: [
+        n("The Last Page waits, patient as paper. The gray pencil figure looks up."),
+        say("ren", "hey. good walk? ...yeah. it shows. okay - one page left. OUR book."),
+        say("ren", "So. How does the story end?"),
+        { t: "choice", options: [
+          { label: "Finish the story. Then go say it for real.", then: [
+            say("ren", "...yeah. YEAH. Okay. You draw, I'll talk. Like always."),
+            n("You draw until your hand aches. Sir Biscuit gets a statue. Wisp gets\na constellation. Stub gets the sun, obviously. The Swan gets the whole sky."),
+            n("And on the very last line, you write the ending you choose:\n'AND THEY FIXED WHAT THEY COULD, AND CARRIED WHAT THEY COULDN'T,\nAND THEY WERE FRIENDS FOREVER ANYWAY.'"),
+            say("ren", "Go on, then. He's waiting. Tell him about the swan cloud - the real one\nnever heard that part."),
+            say("biscuit", "Our lady of Two Names... it was the honor of my crust."),
+            say("wisp", "we'll keep the lights on. for whenever you visit. dreams stay, you know."),
+            say("stub", "hey. HEY. no crying on the crayon. ...okay, a little on the crayon."),
+            mira("gloomy", "I'll visit. Both of you. All of you. I promise."),
+            { t: "flag", key: "chose_true", value: true },
+            { t: "fade", ms: 2500 },
+            { t: "ending", which: "true" },
+          ] },
+          { label: "Stay here. Where it never happened.", then: [
+            say("ren", "...you sure? It's nice here. It's ALWAYS nice here. That's kind of the problem."),
+            mira("neutral", "Just for a while. Just until it stops hurting."),
+            say("ren", "Mira. It stops hurting BY going. That's the trick nobody likes.\n...but okay. A while. I'll put the kettle on."),
+            { t: "flag", key: "chose_page", value: true },
+            { t: "fade", ms: 2500 },
+            { t: "ending", which: "page" },
+          ] },
+          { label: "Keep walking a little longer.", then: [
+            say("ren", "the kettle's on standby. no rush. THAT part I mean completely."),
+          ] },
+        ] },
+      ], else: [
+        n("The ink is drying into paper. The page is almost ready."),
+      ] },
     ], else: [
       n("You step onto the clean island. The ink rises around it, slow as a held sob,\ninto a wave that does not crash."),
       { t: "sfx", name: "sfx_static" }, { t: "shake", ms: 900 },
@@ -695,6 +988,9 @@ export const SCRIPTS = {
       mira("gloomy", "...you turned around because of me. If I hadn't-"),
       say("ren", "If-hadn'ts drown pages, Mira. Look around. This whole sea is if-hadn'ts."),
       say("ren", "One page left. OUR book. So - how does the story end?"),
+      { t: "if", flag: "mending", is: true, then: [], else: [
+        say("ren", "...or, hey. No rush. The book's not going anywhere anymore.\nWalk it once more if you want. Say your goodbyes properly.\nI'll keep the page warm."),
+      ] },
       { t: "choice", options: [
         { label: "Finish the story. Then go say it for real.", then: [
           say("ren", "...yeah. YEAH. Okay. You draw, I'll talk. Like always."),
@@ -708,6 +1004,14 @@ export const SCRIPTS = {
           { t: "fade", ms: 2500 },
           { t: "ending", which: "true" },
         ] },
+        { label: "Not yet - walk our book once more.", then: [
+          say("ren", "take your time. seriously. we have LOADS of it now.\nooh - and if you find something unfinished out there... be brave about it."),
+          { t: "flag", key: "mending", value: true },
+          n("The worlds beyond the depths feel different already - like a held breath\nfinally let out. (The doors on the Blank Page are all open. Come back to\nthe Last Page whenever you're ready to choose the ending.)"),
+          { t: "fade", ms: 800 },
+          { t: "tp", map: "blank_page", x: 10, y: 6, facing: "down" },
+          { t: "unfade", ms: 800 },
+        ] },
         { label: "Stay here. Where it never happened.", then: [
           say("ren", "...you sure? It's nice here. It's ALWAYS nice here. That's kind of the problem."),
           mira("neutral", "Just for a while. Just until it stops hurting."),
@@ -720,25 +1024,65 @@ export const SCRIPTS = {
     ] },
   ],
 
+  s_ember: [
+    n("A loose sheet flutters on the page, all by itself: a drawing you started\nlong before Ren. Half magnificent. Half scaffolding. Never named."),
+    { t: "ifjournal", then: [
+      mira("neutral", "...I remember you. I got scared of how big you were getting.\nI'm not scared of big feelings anymore. Mostly."),
+      n("The sheet unfolds. And unfolds. And UNFOLDS."),
+      { t: "battle", troop: "t_boss_unfinished", boss: true, flagWin: "ember_done",
+        onPeace: [
+          n("Ember curls around the Blank Page's lamp like a cat the size of a myth.\nIt isn't finished. It's UNDERWAY. It gives you something it was hoarding:\na line drawn all the way to the end."),
+          { t: "give", item: "charm_sunbadge" },
+          n("(Got the FINISHED LINE! A charm - choose it in POCKETS\nto give it to a friend to wear.)"),
+        ],
+        onWin: [
+          n("The page settles, empty. Some stories end by ending.\nYou sit with that a while."),
+        ] },
+    ], else: [
+      n("The sheet shivers and stays shut. Something enormous inside is listening\nfor whether you're the kind of person who finishes what they start."),
+      mira("neutral", "...I think it wants to see every doodle in this book smiling first.\nEvery. Single. One. (The guide book would call that a full FRIEND JOURNAL.)"),
+    ] },
+  ],
+
   // ================================================================ ENDINGS
   s_ending_true: [
     { t: "bgm", name: "bgm_ending" },
     { t: "flag", key: "true_ending_walk", value: true },
+    { t: "flag", key: "failed_walk_active", value: false }, // the walk that counts
     { t: "tp", map: "real_bedroom", x: 6, y: 6, facing: "down" },
     { t: "unfade", ms: 2000 },
     n("Saturday. Actual, confirmed Saturday - you checked.\nThe sketchbook is in your backpack. Your shoes are by the door."),
     n("(Walk to the front door.)"),
   ],
   s_enter_hospital: [
+    { t: "if", flag: "true_ending_walk", is: false, then: [
+      n("The hospital doors are right there, glowing warm.\nNot yet. Your feet are very clear about the order of things."),
+    ], else: [
     { t: "fade", ms: 1000 },
     { t: "tp", map: "hospital_room", x: 10, y: 12, facing: "up" },
     { t: "unfade", ms: 1400 },
     n("Room 314. Paper cranes on the table - Mom's been folding them here,\nall these weeks, saying nothing."),
     n("(Go to the bed.)"),
+    ] },
   ],
   s_busstop: [ n("The bench where you both waited a thousand mornings.\nYou sit for exactly one breath, for old times' sake, then keep going.") ],
   s_traffic_light: [ n("The light blinks to green and back.\nIt's just a light. It was always just a light. You cross with it anyway,\nlooking both ways twice, the way you'll look both ways forever now.") ],
-  s_crossing: [ n("The crosswalk. Your heart does one hard knock, like a bell...\nand then it passes. You keep walking.") ],
+  s_crossing: [
+    { t: "if", flag: "failed_walk_active", is: true, then: [
+      n("The crosswalk. The light is green. It's JUST a light.\nYour feet stop anyway, all by themselves, six tiles of painted white away."),
+      mira("gloomy", "Move. MOVE. It's just a road. He's just past it. Move."),
+      n("The light blinks to red, patient as anything. Your feet turn you around\nwithout asking, and you're halfway home before you notice you're crying."),
+      { t: "fade", ms: 1200 },
+      { t: "tp", map: "real_bedroom", x: 6, y: 6, facing: "down" },
+      { t: "unfade", ms: 1200 },
+      n("The sketchbook is where you left it. The dream is where you left it.\nYou're not ready. That's not the same as never."),
+      { t: "flag", key: "failed_walk_active", value: false },
+      { t: "flag", key: "failed_walk_done", value: true },
+      { t: "save" },
+    ], else: [
+      n("The crosswalk. Your heart does one hard knock, like a bell...\nand then it passes. You keep walking."),
+    ] },
+  ],
   s_flowers: [ n("Fresh flowers and thirty-one paper cranes. Mom's been counting days\nthe only way she knows how.") ],
   s_chair: [ n("The visitor chair, pulled close to the bed already.\nLike it's been waiting for you specifically.") ],
   s_ren_bed: [

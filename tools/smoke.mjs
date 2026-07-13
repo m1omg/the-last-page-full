@@ -183,11 +183,11 @@ if (process.env.SMOKE_ENDING === "page") {
   await waitIdle(25000);
   await g(`(() => {
     const s = window.__game.game.state;
-    s.pages = 4;
-    ["blank_intro_done","biscuit_joined","wisp_joined","meadow_boss_done","woods_boss_done","bay_boss_done"].forEach(f => s.flags[f] = true);
+    s.pages = 6;
+    ["blank_intro_done","biscuit_joined","wisp_joined","stub_joined","meadow_boss_done","woods_boss_done","dunes_boss_done","bay_boss_done","works_boss_done"].forEach(f => s.flags[f] = true);
     window.__game.game.state.party.push(...[]);
   })()`);
-  await g(`window.__game.game.runScript([{ t: "join", member: "biscuit" }, { t: "join", member: "wisp" }])`);
+  await g(`window.__game.game.runScript([{ t: "join", member: "biscuit" }, { t: "join", member: "wisp" }, { t: "join", member: "stub" }])`);
   await page.waitForTimeout(200);
   await g(`window.__game.tp("depths_2", 10, 12)`);
   await page.waitForTimeout(400);
@@ -204,7 +204,7 @@ if (process.env.SMOKE_ENDING === "page") {
   }
   await runBattlePeace(120000);
   await waitChoice(40000);
-  await chooseOption(1); // stay on the page
+  await chooseOption(2); // stay on the page (option 1 is the Mending walk now)
   {
     const t = Date.now();
     // the ending CG must actually be VISIBLE — the fade-to-black before the
@@ -239,7 +239,7 @@ if ((await mode()) !== "title") fail("not on title");
 
 step = "new game";
 await key("KeyZ"); // possibly Continue/New Game — pick last option = New Game
-const hasSave = await g("!!localStorage.getItem('the-last-page-save')");
+const hasSave = await g("!!localStorage.getItem('the-last-page-full-save')");
 await page.waitForTimeout(1600);
 if ((await mode()) !== "map") fail("did not enter map");
 await waitIdle();
@@ -470,6 +470,44 @@ await waitIdle(40000);
 if ((await g("window.__game.game.state.pages")) < 2) fail("no page 2");
 await shot("09_interlude2");
 
+step = "dunes";
+await g(`window.__game.tp("blank_page", 2, 3)`);
+await page.waitForTimeout(300); await waitIdle();
+await goThrough(2, 3, "up", "dunes_1"); // bump the pink crayon door at (2,2)
+step = "stub joins";
+await walkTo(7, 4); await g(`window.__game.game.state.facing="left"`); await key("KeyZ"); await waitIdle(25000);
+if (!(await flag("stub_joined"))) fail("stub didn't join");
+if ((await g("window.__game.game.state.party.length")) !== 4) fail("party isn't 4 after stub");
+step = "bench charm (side quest)";
+await walkTo(6, 9); await g(`window.__game.game.state.facing="left"`); await key("KeyZ");
+{
+  const tB = Date.now();
+  while (!(await g("!!window.__game.game.state.inventory.charm_ribbon"))) {
+    if (Date.now() - tB > 25000) await fail("no Warm Ribbon from the bench");
+    const choice = await g("!!window.__game.game.dialogue.choice");
+    if (choice) await chooseOption(0); else await page.keyboard.press("KeyZ");
+    await page.waitForTimeout(150);
+  }
+}
+await waitIdle(20000);
+step = "smoother boss";
+await goThrough(10, 1, "up", "dunes_2");
+await walkTo(9, 5); await pressToward("up", 1);
+{
+  const tS = Date.now();
+  while ((await mode()) !== "battle") {
+    if (Date.now() - tS > 25000) fail("smoother battle never started");
+    const choice = await g("!!window.__game.game.dialogue.choice");
+    if (choice) await chooseOption(0); else await page.keyboard.press("KeyZ");
+    await page.waitForTimeout(150);
+  }
+}
+await shot("09a_smoother");
+await runBattlePeace(120000);
+await waitIdle(40000);
+if ((await g("window.__game.game.state.pages")) < 3) fail("no page 3 (dunes)");
+if ((await g("window.__game.game.state.map")) !== "real_bedroom") fail("no dunes interlude");
+
 step = "bay";
 await g(`window.__game.tp("blank_page", 17, 7)`);
 await page.waitForTimeout(300); await waitIdle();
@@ -503,7 +541,68 @@ await shot("10_keeper");
 await runBattlePeace();
 if (lastBattleRounds < 5) fail(`KEEPER pacified in ${lastBattleRounds} rounds — boss pacing regressed (want >= 5)`);
 await waitIdle(40000);
-if ((await g("window.__game.game.state.pages")) < 3) fail("no page 3");
+if ((await g("window.__game.game.state.pages")) < 4) fail("no page 4 (keeper)");
+
+step = "works";
+await g(`window.__game.tp("blank_page", 17, 3)`);
+await page.waitForTimeout(300); await waitIdle();
+await goThrough(17, 3, "up", "works_1"); // bump the brass crayon door at (17,2)
+step = "winder + locket (side quest)";
+await walkTo(10, 6); await key("KeyZ"); await waitIdle(20000); // sparkle: the winder
+if (!(await g("!!window.__game.game.state.inventory.winder"))) fail("no winder");
+await walkTo(11, 6); await g(`window.__game.game.state.facing="right"`); await key("KeyZ");
+{
+  const tW = Date.now();
+  while (!(await g("!!window.__game.game.state.inventory.charm_locket"))) {
+    if (Date.now() - tW > 25000) await fail("no Crumb Locket from the conveyor");
+    const choice = await g("!!window.__game.game.dialogue.choice");
+    if (choice) await chooseOption(0); else await page.keyboard.press("KeyZ");
+    await page.waitForTimeout(150);
+  }
+}
+await waitIdle(20000);
+step = "oracle boss";
+await goThrough(2, 13, "left", "works_2"); // step onto the gate tile at (1,13)
+await walkTo(10, 7); await pressToward("up", 1);
+{
+  const tO = Date.now();
+  while ((await mode()) !== "battle") {
+    if (Date.now() - tO > 25000) fail("oracle battle never started");
+    const choice = await g("!!window.__game.game.dialogue.choice");
+    if (choice) await chooseOption(0); else await page.keyboard.press("KeyZ");
+    await page.waitForTimeout(150);
+  }
+}
+await shot("10b_oracle");
+await runBattlePeace(120000);
+if (lastBattleRounds < 5) fail(`ORACLE pacified in ${lastBattleRounds} rounds — boss pacing regressed (want >= 5)`);
+await waitIdle(40000);
+if ((await g("window.__game.game.state.pages")) < 5) fail("no page 5 (works)");
+if (!(await flag("failed_walk_active"))) fail("failed-walk interlude not armed");
+
+step = "the walk that turns back";
+// works interlude leaves Mira in her room with the failed walk armed: front
+// door -> Go -> the crossing stops her feet and sends her home, clearing it
+await walkTo(9, 12); await pressToward("down", 1); await waitIdle(20000);
+if ((await g("window.__game.game.state.map")) !== "real_hall") fail("no hall (failed walk)");
+await walkTo(9, 12); await pressToward("down", 1);
+{
+  const tF = Date.now();
+  while ((await g("window.__game.game.state.map")) !== "real_street") {
+    if (Date.now() - tF > 25000) await fail("failed walk never reached the street");
+    const choice = await g("!!window.__game.game.dialogue.choice");
+    if (choice) await chooseOption(0); else await page.keyboard.press("KeyZ");
+    await page.waitForTimeout(150);
+  }
+}
+await waitIdle(20000);
+await walkTo(9, 9); await pressToward("up", 1); // touch the crossing stop strip
+await page.waitForTimeout(400);
+await waitIdle(30000);
+if ((await g("window.__game.game.state.map")) !== "real_bedroom") fail("the crossing didn't turn her back");
+if (await flag("failed_walk_active")) fail("failed_walk_active still set after turning back");
+if (!(await flag("failed_walk_done"))) fail("failed_walk_done not set");
+await shot("10c_failed_walk");
 
 step = "depths";
 await g(`window.__game.tp("blank_page", 9, 11)`);
@@ -519,7 +618,7 @@ await goThrough(10, 1, "up", "depths_2"); // s_depths2_enter: page 4 + CG
 // script a beat to begin before driving it
 await page.waitForTimeout(400);
 await waitIdle(60000);
-if ((await g("window.__game.game.state.pages")) < 4) fail("no page 4");
+if ((await g("window.__game.game.state.pages")) < 6) fail("no page 6");
 
 step = "page grants must not stack on re-entry";
 // leaving and re-entering depths_2 replays onEnter — the page 4 grant must be
@@ -531,8 +630,8 @@ step = "page grants must not stack on re-entry";
   await g(`window.__game.tp("depths_2", 10, 12)`);
   await page.waitForTimeout(300); await waitIdle(30000);
   const hpAfter = await g("window.__game.game.state.party[0].maxHp");
-  if (hpAfter !== hpBefore) await fail(`page 4 re-stacked on re-entry: maxHp ${hpBefore} -> ${hpAfter}`);
-  if ((await g("window.__game.game.state.pages")) !== 4) await fail("pages count changed on re-entry");
+  if (hpAfter !== hpBefore) await fail(`page 6 re-stacked on re-entry: maxHp ${hpBefore} -> ${hpAfter}`);
+  if ((await g("window.__game.game.state.pages")) !== 6) await fail("pages count changed on re-entry");
 }
 
 step = "smudge";

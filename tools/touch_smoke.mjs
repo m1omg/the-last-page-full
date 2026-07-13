@@ -46,8 +46,8 @@ async function newPage(ctx, { settings = null, query = "" } = {}) {
   // seed ONLY if absent — addInitScript re-runs on reload, and we must not
   // clobber what the game itself wrote (that's what we're testing).
   await page.addInitScript(([save, st]) => {
-    if (!localStorage.getItem("the-last-page-save")) localStorage.setItem("the-last-page-save", save);
-    if (st && !localStorage.getItem("the-last-page-settings")) localStorage.setItem("the-last-page-settings", st);
+    if (!localStorage.getItem("the-last-page-full-save")) localStorage.setItem("the-last-page-full-save", save);
+    if (st && !localStorage.getItem("the-last-page-full-settings")) localStorage.setItem("the-last-page-full-settings", st);
   }, [SAVE, settings]);
   await page.goto(base + "/" + query);
   await page.waitForFunction("window.__ready === true", null, { timeout: 20000 });
@@ -260,7 +260,7 @@ async function dialogueOverlap(page) {
   await page.reload();
   await page.waitForFunction("window.__ready === true", null, { timeout: 20000 });
   ok("scheme persisted across reload", (await page.evaluate("window.__game.touch.scheme")) === "dpad");
-  ok("persisted to localStorage", (await page.evaluate(`JSON.parse(localStorage.getItem("the-last-page-settings")).touch`)) === "dpad");
+  ok("persisted to localStorage", (await page.evaluate(`JSON.parse(localStorage.getItem("the-last-page-full-settings")).touch`)) === "dpad");
 
   ok("no console errors", page.__errs.length === 0, page.__errs[0] || "");
   await ctx.close();
@@ -304,9 +304,9 @@ for (const schemeUnderTest of ["gestures", "dpad"]) {
   await page.waitForTimeout(250);
   ok("menu open", await page.evaluate("window.__game.game.menu.open"));
 
-  // tap the "Options" tab directly (third tab, drawn at x 480..640, y 80..124)
-  await tapLogical(page, cdp, 560, 100);
-  ok("tapping a tab switches to it", (await page.evaluate("window.__game.game.menu.tab")) === 2);
+  // tap the "Options" tab directly (fourth tab, drawn at x 562..702, y 78..126)
+  await tapLogical(page, cdp, 632, 100);
+  ok("tapping a tab switches to it", (await page.evaluate("window.__game.game.menu.tab")) === 3);
 
   // tap the "Touch controls" row — found by label so menu reshuffles don't
   // silently retarget this test (rows draw at y = 180 + i*44)
@@ -371,7 +371,7 @@ for (const schemeUnderTest of ["gestures", "dpad"]) {
 
   // no save → [New Game, Import save, Sound, Touch]. One press per frame:
   // `pressed` is a Set, so two keydowns inside one frame collapse to one hit().
-  const settings = () => page.evaluate(`JSON.parse(localStorage.getItem("the-last-page-settings") || "null")`);
+  const settings = () => page.evaluate(`JSON.parse(localStorage.getItem("the-last-page-full-settings") || "null")`);
   await page.keyboard.press("ArrowDown"); await page.waitForTimeout(140);
   await page.keyboard.press("ArrowDown"); await page.waitForTimeout(140);
   ok("cursor is on the Sound option", (await page.evaluate("window.__game.game.title.index")) === 2);
@@ -457,9 +457,9 @@ for (const schemeUnderTest of ["gestures", "dpad"]) {
 
   // must not clobber the neighbouring settings keys
   await page.evaluate("window.__game.game.audio ? 0 : 0");
-  const stored = JSON.parse(await page.evaluate(`localStorage.getItem("the-last-page-settings")`));
+  const stored = JSON.parse(await page.evaluate(`localStorage.getItem("the-last-page-full-settings")`));
   // the Options tab rows must clear the hint lines below them
-  await page.evaluate(`(() => { const g = window.__game.game; g.menu.show(); g.menu.tab = 2; })()`);
+  await page.evaluate(`(() => { const g = window.__game.game; g.menu.show(); g.menu.tab = 3; })()`);
   await page.waitForTimeout(300);
   const geom = await page.evaluate("window.__game.game.menu.optGeom");
   ok("Options rows clear the hint text", geom && geom.y0 + (geom.rows - 1) * geom.step + 22 < geom.hintY,
@@ -521,8 +521,8 @@ for (const schemeUnderTest of ["gestures", "dpad"]) {
   // click a menu tab, then a row, then outside to close
   await page.mouse.click(p.x, p.y, { button: "right" });
   await page.waitForTimeout(350);
-  await clickLogical(page, 560, 100); // Options tab
-  ok("clicking the Options tab switches to it", (await page.evaluate("window.__game.game.menu.tab")) === 2);
+  await clickLogical(page, 632, 100); // Options tab (fourth of four now)
+  ok("clicking the Options tab switches to it", (await page.evaluate("window.__game.game.menu.tab")) === 3);
   await clickLogical(page, 430, 188); // Export save row (first option row)
   ok("clicking 'Export save' runs it", (await page.evaluate(`window.__game.game.menu.notice`)).toLowerCase().includes("downloaded"));
   await clickLogical(page, 30, 360); // dimmed area outside the panel

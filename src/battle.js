@@ -36,6 +36,7 @@ export class BattleScene {
         id, i, name: d.name, img: d.img, def: d,
         hp: d.hp, maxHp: d.hp, atk: d.atk, defs: d.def, spd: d.spd,
         emotion: d.emotion || "neutral", calm: 0,
+        storm: d.emotion || "neutral", // current storm; rotates on some bosses
         lastReach: null,   // the option that landed last — repeats fizzle
         settled: 0,        // calm gains this round (cap 1, or 2 while GIGGLY)
         rallied: false,    // boss second wind, triggered below half HP
@@ -56,6 +57,10 @@ export class BattleScene {
     this.storyReachStep = 0;
     this.rounds = 0; // read by the smoke tests to guard against re-trivializing
 
+    // Warm Ribbon: someone carrying it means every doodle starts LISTENING
+    if (this.party.some((m) => m.hp > 0 && m.charm === "charm_ribbon")) {
+      for (const e of this.enemies) if (e.def.calmNeed && !e.def.reachStory) e.emotion = "neutral";
+    }
     audio.playBgm(cfg.boss ? "bgm_boss" : "bgm_battle", { fade: 0.4 });
     const intro = this.enemies.map((e) => e.def.intro).join("\n");
     this.queueMsg(intro);
@@ -241,7 +246,8 @@ export class BattleScene {
     // resolve before enemy actions regardless of speed — otherwise a slow
     // defender (Biscuit, spd 5) raises the wall after the hits already landed
     const pri = (a) => (a.kind === "guard" || (a.kind === "skill" && SKILLS[a.skill] && SKILLS[a.skill].kind === "wall")) ? 1000 : 0;
-    acts.sort((a, b) => (pri(b) + (b.actor.spd || 0)) - (pri(a) + (a.actor.spd || 0)));
+    const spd = (a) => (a.actor.spd || 0) + (a.actor.charm === "charm_sunbadge" ? 2 : 0);
+    acts.sort((a, b) => (pri(b) + spd(b)) - (pri(a) + spd(a)));
     this.turnQ = acts;
     this.wall = false;
     this.phase = "anim";
@@ -282,8 +288,9 @@ export class BattleScene {
     let dmg = raw;
     if (target.emotion === "grumpy") dmg *= 1.15;
     if (target.emotion === "gloomy") dmg *= 0.85;
-    if (target.guard) dmg *= 0.5;
-    if (this.wall && this.party.includes(target)) dmg *= 0.5;
+    const guardMult = target.charm === "charm_locket" ? 0.35 : 0.5;
+    if (target.guard) dmg *= guardMult;
+    if (this.wall && this.party.includes(target)) dmg *= guardMult;
     dmg = Math.max(1, Math.round(dmg * (0.85 + Math.random() * 0.3)));
     if (target.emotion === "giggly" && Math.random() < 0.12) return { miss: true, dmg: 0 };
     return { miss: false, dmg };
@@ -298,7 +305,7 @@ export class BattleScene {
       this.queueMsg(`${a.name} strikes with everything they have... and the ink just SOAKS IT IN. Violence is a language it doesn't speak.`);
       return;
     }
-    let raw = a.atk * mult;
+    let raw = (a.atk + (a.charm === "charm_sunbadge" ? 3 : 0)) * mult;
     if (a.emotion === "grumpy") raw *= 1.2;
     raw *= advMult(a.emotion, target.emotion);
     raw -= (isEnemyTarget ? target.defs : target.def) * 0.55;
@@ -348,6 +355,21 @@ export class BattleScene {
     } else if (sk.kind === "wall") {
       this.wall = true;
       this.queueMsg(`${a.name} uses ${sk.name}! "NOBODY TOUCHES MY FRIENDS." The party is shielded this round!`);
+    } else if (sk.kind === "emotion_party") {
+      audio.sfx("sfx_emotion");
+      for (const t of this.aliveParty()) {
+        t.emotion = sk.emotion;
+        this.addFloater(t, sk.emotion.toUpperCase(), EMOTION_COLOR[sk.emotion]);
+      }
+      this.queueMsg(`${a.name} uses ${sk.name}! Warm light spills over everyone - the whole party is ${sk.emotion.toUpperCase()}!`);
+    } else if (sk.kind === "inkgift") {
+      const t = act.target || this.aliveParty().find((m) => m !== a) || a;
+      const give = Math.min(sk.amount, a.ink, t.maxInk - t.ink);
+      a.ink -= give;
+      t.ink += give;
+      audio.sfx("sfx_heal");
+      this.addFloater(t, `+${give}✒`, "#5a7fc4");
+      this.queueMsg(`${a.name} uses ${sk.name}! ${t.name} soaks up ${give} Ink of warm yellow wax.`);
     }
   }
 
@@ -402,28 +424,36 @@ export class BattleScene {
       e.calm = Math.max(0, e.calm - 1);
       e.lastReach = null;
       if (had > 0) this.addFloater(e, "-♥", "#8a6a7a");
-      if (e.emotion === "giggly") {
+      if (e.emotion === "giggly" && e.storm !== "giggly") {
         this.queueMsg(`${e.name}'s giggle sharpens into something WILDER...${had > 0 ? " A heart flickers out." : ""} (A giggly doodle dodges and swings hard!)`);
       } else {
-        e.emotion = e.def.emotion; // the storm comes back
+        e.emotion = e.storm; // the storm comes back
         this.queueMsg(`${e.name} shrinks back into the bad feeling...${had > 0 ? " A heart flickers out." : ""}`);
       }
     } else if (o.label === e.lastReach) {
       this.queueMsg(`${e.name} nods along... but it just heard that one. It needs something NEW.`);
-    } else if (e.emotion === e.def.emotion) {
+    } else if (e.emotion === e.storm) {
       // the storm gate: this reach breaks through, but the words don't land yet
       e.emotion = "neutral";
       e.lastReach = o.label;
       this.addFloater(e, "listening...", "#e8d8a0");
       this.queueMsg(`${e.name} goes quiet mid-feeling. It's LISTENING now.`);
-    } else if (e.settled >= (e.emotion === "giggly" ? 2 : 1)) {
+    } else if (e.settled >= (e.emotion === "giggly" ? 2 : 1) + (a.charm === "charm_stamp" ? 1 : 0)) {
       this.queueMsg(`${e.name} is still holding your words. Let them settle.`);
     } else {
       e.calm++;
       e.settled++;
       e.lastReach = o.label;
       this.addFloater(e, "♥", "#e88aa0");
-      if (e.emotion === "giggly" && e.settled === 1 && e.calm < e.def.calmNeed) {
+      if (e.def.rotate && e.calm < e.def.calmNeed) {
+        // the rotating storm: each landed heart stirs up the NEXT bad feeling
+        const cycle = ["grumpy", "gloomy", "giggly"];
+        e.storm = cycle[(cycle.indexOf(e.storm) + 1) % cycle.length];
+        e.emotion = e.storm;
+        e.lastReach = null;
+        this.addFloater(e, e.storm.toUpperCase(), EMOTION_COLOR[e.storm]);
+        this.queueMsg(`The heart lands... and a DIFFERENT feeling boils up where it landed. ${e.name} storms ${e.storm.toUpperCase()} - break through again!`);
+      } else if (e.emotion === "giggly" && e.settled === 1 && e.calm < e.def.calmNeed) {
         this.queueMsg(`${e.name} is giggling too much to be sad - it could take one more kind thing this round!`);
       }
     }
@@ -526,6 +556,14 @@ export class BattleScene {
         : allSoothed ? "peace" : "win";
       this.phase = "end";
       this.calmParty();
+      // friend journal: remember how each doodle's story ended (peace wins)
+      const st = this.game.state;
+      if (!st.journal) st.journal = {};
+      for (const e of this.enemies) {
+        if (!e.def.calmNeed) continue;
+        if (e.soothed) st.journal[e.id] = "peace";
+        else if (e.hp <= 0 && st.journal[e.id] !== "peace") st.journal[e.id] = "win";
+      }
       // rewards
       if (this.result !== "lose") {
         const items = [];
@@ -643,7 +681,8 @@ export class BattleScene {
         fy = 180 - f.t * 50;
       } else {
         const i = this.party.indexOf(e);
-        fx = 190 + i * 290;
+        const nP = this.party.length;
+        fx = (nP <= 3 ? 190 : 135) + i * (nP <= 3 ? 290 : 232);
         fy = 560 - f.t * 40;
       }
       ctx.save();
@@ -652,20 +691,24 @@ export class BattleScene {
       ctx.restore();
     }
 
-    // party status panel
+    // party status panel — panels slim down when a fourth friend joins
     const py = 590;
+    const n4 = this.party.length;
+    const PW = n4 <= 3 ? 270 : 218;
+    const STEPX = n4 <= 3 ? 290 : 232;
+    const X0 = n4 <= 3 ? 50 : 26;
     this.party.forEach((m, i) => {
-      const bx = 50 + i * 290;
-      drawBox(ctx, bx, py, 270, 100, { seed: i + 20, fill: m.hp > 0 ? "rgba(255,252,240,0.95)" : "rgba(220,200,200,0.9)" });
-      drawText(ctx, m.name, bx + 14, py + 8, { size: 19, bold: true, color: "#5a4634" });
-      emotionTag(ctx, bx + 220, py + 12, m.emotion);
-      drawBar(ctx, bx + 14, py + 40, 160, 16, m.hp / m.maxHp, "#c25a4a", `${m.hp}/${m.maxHp}`);
-      drawBar(ctx, bx + 14, py + 62, 160, 16, m.ink / m.maxInk, "#5a7fc4", `${m.ink}/${m.maxInk}`);
-      drawText(ctx, "HP", bx + 182, py + 40, { size: 14, color: "#7a6a5a" });
-      drawText(ctx, "INK", bx + 182, py + 62, { size: 14, color: "#7a6a5a" });
+      const bx = X0 + i * STEPX;
+      drawBox(ctx, bx, py, PW, 100, { seed: i + 20, fill: m.hp > 0 ? "rgba(255,252,240,0.95)" : "rgba(220,200,200,0.9)" });
+      drawText(ctx, m.name, bx + 14, py + 8, { size: n4 <= 3 ? 19 : 17, bold: true, color: "#5a4634" });
+      emotionTag(ctx, bx + PW - 50, py + 12, m.emotion);
+      drawBar(ctx, bx + 14, py + 40, PW - 110, 16, m.hp / m.maxHp, "#c25a4a", `${m.hp}/${m.maxHp}`);
+      drawBar(ctx, bx + 14, py + 62, PW - 110, 16, m.ink / m.maxInk, "#5a7fc4", `${m.ink}/${m.maxInk}`);
+      drawText(ctx, "HP", bx + PW - 88, py + 40, { size: 14, color: "#7a6a5a" });
+      drawText(ctx, "INK", bx + PW - 88, py + 62, { size: 14, color: "#7a6a5a" });
       if (this.phase === "command" && i === this.cmdIndex && !this.msgQ.length) {
         const t = performance.now() / 250;
-        drawText(ctx, "▶", bx - 24 + Math.sin(t) * 3, py + 40, { size: 22, color: "#b8452e" });
+        drawText(ctx, "▶", bx - 22 + Math.sin(t) * 3, py + 40, { size: 20, color: "#b8452e" });
       }
     });
 

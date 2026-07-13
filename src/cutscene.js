@@ -99,6 +99,14 @@ async function runCmd(game, c) {
     case "save":
       game.saveNow();
       break;
+    case "ifjournal": {
+      // every befriendable doodle (calmNeed, not the Smudge) marked "peace"
+      const { ENEMIES } = await import("./data/enemies.js");
+      const need = Object.keys(ENEMIES).filter((k) => ENEMIES[k].calmNeed && !ENEMIES[k].reachStory && k !== "unfinished");
+      const done = need.every((k) => st.journal && st.journal[k] === "peace");
+      await runScript(game, done ? (c.then || []) : (c.else || []));
+      break;
+    }
     case "ending":
       await game.playEnding(c.which);
       break;

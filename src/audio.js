@@ -12,7 +12,8 @@ master.gain.value = muted ? 0 : 1;
 let current = null; // { name, source, gain }
 
 const BGM = ["bgm_title", "bgm_blank", "bgm_real", "bgm_meadow", "bgm_woods",
-  "bgm_bay", "bgm_depths", "bgm_battle", "bgm_boss", "bgm_ending"];
+  "bgm_bay", "bgm_depths", "bgm_battle", "bgm_boss", "bgm_ending",
+  "bgm_dunes", "bgm_works"];
 const SFX = ["sfx_blip", "sfx_confirm", "sfx_cancel", "sfx_step", "sfx_hit",
   "sfx_heal", "sfx_emotion", "sfx_save", "sfx_door", "sfx_page",
   "sfx_heartbeat", "sfx_static", "sfx_tear", "sfx_soothe", "sfx_victory",

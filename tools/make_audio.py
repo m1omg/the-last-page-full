@@ -214,6 +214,7 @@ CHORDS = {
     "Am": ["A", "C", "E"], "Am7": ["A", "C", "E", "G"], "A": ["A", "C#", "E"],
     "Bb": ["Bb", "D", "F"], "Bdim": ["B", "D", "F"], "Bm": ["B", "D", "F#"],
     "Ab": ["Ab", "C", "Eb"], "Eb": ["Eb", "G", "Bb"], "Cm": ["C", "Eb", "G"],
+    "B": ["B", "D#", "F#"],
 }
 
 
@@ -398,6 +399,64 @@ def bgm_depths():
     for st in (10, 26, 42, 58):
         render_noise(s.buf, st * s.beat, 2.2, 0.08, decay=1.5, lp=0.15)
     write_wav(OUT / "bgm_depths.wav", s.buf, 0.8)
+
+
+def bgm_dunes():
+    # The Eraser Dunes: a lullaby that keeps politely skipping the sad notes.
+    # Too pleasant on purpose - denial in C major, with erased gaps where the
+    # melody should land, and a faint flat "ghost" voice a breath behind.
+    s = Song(51.2, 75)
+    prog = ["C", "F", "C", "G", "C", "F", "Am", "G"] * 2
+    for bar, sym in enumerate(prog):
+        b = bar * 4
+        notes = chord_notes(sym, 4)
+        s.note(b, notes[0], 3.0, 0.4, musicbox, echo=0.25)
+        s.note(b + 2, notes[2], 1.8, 0.28, musicbox, echo=0.25)
+        s.note(b, chord_notes(sym, 2)[0], 3.5, 0.32, subbass)
+    render(s.buf, 0, freq("C3"), 25.6, 0.4, pad)
+    render(s.buf, 25.6 * s.beat, freq("F2"), 25.6, 0.4, pad)
+    mel = [(0, "E5", 1.5), (2, "G5", 1),
+           (4, "E5", 1), (5, "D5", 1.5),
+           (8, "C5", 1), (10, "E5", 1.5),
+           (12, "D5", 2),
+           (16, "E5", 1.5), (18, "G5", 1), (19, "A5", 1),
+           (20, "G5", 1),
+           (24, "C5", 1), (25, "D5", 1), (26, "E5", 1.5),
+           (28, "D5", 1),
+           (32, "E5", 1.5), (34, "G5", 1),
+           (36, "A5", 2), (39, "G5", 0.5),
+           (40, "E5", 1), (42, "D5", 1.5),
+           (44, "C5", 1), (46, "D5", 1),
+           (48, "E5", 3)]
+    for b, n, d in mel:
+        s.note(b, n, d, 0.42, musicbox, echo=0.3)
+        s.note(b + 0.09, n, d, 0.08, felt, echo=0.4)  # the erased song's ghost
+    write_wav(OUT / "bgm_dunes.wav", s.buf, 0.75)
+
+
+def bgm_works():
+    # The If-Then Works: clockwork bargaining. An escapement tick that never
+    # stops, kalimba gears, and a phrase that rewinds just before resolving -
+    # four times, like four better yesterdays - then finally rests.
+    s = Song(40.0, 96)
+    prog = ["Em", "Am", "Em", "B", "Em", "Am", "C", "B"] * 2
+    for bar, sym in enumerate(prog):
+        b = bar * 4
+        for k in range(4):
+            render_noise(s.buf, (b + k) * s.beat, 0.03, 0.22, decay=60, lp=0.9)
+            render_noise(s.buf, (b + k + 0.5) * s.beat, 0.03, 0.10, decay=60, lp=0.5)
+        s.arp(b, sym, 4, [0, 2, 1, 2, 0, 2, 1, 2], 0.5, 0.3, kalimba, echo=0.15)
+        s.note(b, chord_notes(sym, 2)[0], 3.0, 0.38, subbass)
+    phrase = [(0, "B4", 1), (1, "E5", 1), (2, "F#5", 1), (3, "G5", 1.5),
+              (4.5, "F#5", 0.5), (5, "E5", 1), (6, "D#5", 1.5)]
+    for rep in range(4):
+        off = rep * 8
+        for b, n, d in phrase:
+            s.note(off + b, n, d, 0.4, accordion, echo=0.18)
+    tail = [(32, "B4", 1), (33, "E5", 1), (34, "G5", 2), (36, "F#5", 1.5), (37.5, "E5", 2.5)]
+    for b, n, d in tail:
+        s.note(b, n, d, 0.35, felt, echo=0.3)
+    write_wav(OUT / "bgm_works.wav", s.buf, 0.78)
 
 
 def bgm_battle():
@@ -598,7 +657,7 @@ def sfx_defeat():
 
 
 ALL = [bgm_title, bgm_blank, bgm_real, bgm_meadow, bgm_woods, bgm_bay,
-       bgm_depths, bgm_battle, bgm_boss, bgm_ending,
+       bgm_depths, bgm_battle, bgm_boss, bgm_ending, bgm_dunes, bgm_works,
        sfx_blip, sfx_confirm, sfx_cancel, sfx_step, sfx_hit, sfx_heal,
        sfx_emotion, sfx_save, sfx_door, sfx_page, sfx_heartbeat, sfx_static,
        sfx_tear, sfx_soothe, sfx_victory, sfx_defeat]

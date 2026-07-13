@@ -80,8 +80,10 @@ is also available on the title screen.
 
 ## What's inside
 
-- ~30–45 minutes: a prologue, three drawn worlds (Crayon Meadow, Origami
-  Woods, Button Bay), a final descent, and **two endings**
+- **~2 hours**: a prologue, **five** drawn worlds (Crayon Meadow, Origami
+  Woods, the Eraser Dunes, Button Bay, the If-Then Works), six torn pages,
+  a final descent, an optional post-Smudge **Mending** chapter with a secret
+  superboss, and **two endings**
 - Omori-style battles with an **emotion triangle** (GIGGLY > GRUMPY >
   GLOOMY > GIGGLY) and Undertale-style **Reach Out** — every enemy, including
   every boss, can be resolved without violence. A doodle deep in a bad feeling
@@ -89,7 +91,9 @@ is also available on the title screen.
   your words land, one heart a round — or two, if you cheer it GIGGLY first.
   Risky, though: a giggly doodle dodges and swings wild if your words fail.
   There's a guide book in the Blank Page.
-- 3 party members, skills, items, snacks, a boss that cannot be fought at all
+- **4 party members** (meet Stub, the sun-yellow crayon knight), skills,
+  items, snacks, **wearable charms**, a **friend journal** of every doodle
+  you've talked down, side quests, and a boss that cannot be fought at all
 
 ## Content note
 

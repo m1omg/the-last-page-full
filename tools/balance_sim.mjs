@@ -27,7 +27,8 @@ function mkFoes(troop) {
   return TROOPS[troop].map((id) => {
     const d = ENEMIES[id];
     return { id, def: d, hp: d.hp, maxHp: d.hp, atk: d.atk, defs: d.def, spd: d.spd,
-             emotion: d.emotion || "neutral", calm: 0, lastReach: null, settled: 0, rallied: false, guard: false, soothed: false };
+             emotion: d.emotion || "neutral", storm: d.emotion || "neutral",
+             calm: 0, lastReach: null, settled: 0, rallied: false, guard: false, soothed: false };
   });
 }
 
@@ -80,12 +81,18 @@ function enemyAct(e, party, wall) {
 }
 
 function reach(e, o) {
-  if (!o.good) { e.calm = Math.max(0, e.calm - 1); if (e.emotion !== "giggly") e.emotion = e.def.emotion; e.lastReach = null; return; }
+  if (!o.good) { e.calm = Math.max(0, e.calm - 1); if (e.emotion !== "giggly") e.emotion = e.storm; e.lastReach = null; return; }
   if (o.label === e.lastReach) return;
-  if (e.emotion === e.def.emotion) { e.emotion = "neutral"; e.lastReach = o.label; return; }
+  if (e.emotion === e.storm) { e.emotion = "neutral"; e.lastReach = o.label; return; }
   if (e.settled >= (e.emotion === "giggly" ? 2 : 1)) return;
   e.calm++; e.settled++; e.lastReach = o.label;
-  if (e.calm >= e.def.calmNeed) e.soothed = true;
+  if (e.calm >= e.def.calmNeed) { e.soothed = true; return; }
+  if (e.def.rotate) {
+    const cycle = ["grumpy", "gloomy", "giggly"];
+    e.storm = cycle[(cycle.indexOf(e.storm) + 1) % cycle.length];
+    e.emotion = e.storm;
+    e.lastReach = null;
+  }
 }
 
 // one battle; policy = "peace" | "fight". Returns { rounds, survived, partyHpLeft }
@@ -106,13 +113,17 @@ function sim(partyIds, troop, policy, pages) {
       const e = foesNow[0];
       const hurt = party.find((p) => p.hp > 0 && p.hp < p.maxHp * 0.4);
       if (hurt && m.id === "wisp" && m.ink >= 5) { acts.push({ t: "heal", m, tgt: hurt }); continue; }
+      if (m.id === "stub") {
+        const wisp = party.find((p) => p.id === "wisp" && p.hp > 0 && p.ink < 5);
+        if (wisp && m.ink >= 6) { m.ink -= 6; wisp.ink = Math.min(wisp.maxInk, wisp.ink + 6); continue; }
+      }
       if (hurt && m.id !== "wisp" && Math.random() < 0.5) { acts.push({ t: "snack", m, tgt: hurt }); continue; }
       // any real player walls once the boss rallies
       if (m.id === "biscuit" && e.rallied && m.ink >= 3 && !wall) { m.ink -= 3; wall = true; continue; }
       if (policy === "peace") {
         // shift the storm with the right skill when available, else reach
-        if (e.emotion === e.def.emotion) {
-          const sk = m.skills.map((s) => SKILLS[s]).find((s) => s.kind === "emotion" && s.target === "enemy" && s.emotion !== e.def.emotion);
+        if (e.emotion === e.storm) {
+          const sk = m.skills.map((s) => SKILLS[s]).find((s) => s.kind === "emotion" && s.target === "enemy" && s.emotion !== e.storm);
           if (sk && m.ink >= sk.ink) { acts.push({ t: "shift", m, tgt: e, sk }); continue; }
         }
         const good = e.def.reach.filter((o) => o.good && o.label !== e.lastReach);
@@ -182,6 +193,13 @@ report("meadow pair (duo)", ["mira", "biscuit"], "t_meadow_pair");
 report("TANGLE (duo)", ["mira", "biscuit"], "t_boss_tangle");
 report("woods thornbud (trio)", ["mira", "biscuit", "wisp"], "t_thornbud", 1);
 report("SWAN (trio)", ["mira", "biscuit", "wisp"], "t_boss_swan", 1);
-report("bay clasp (trio)", ["mira", "biscuit", "wisp"], "t_crab", 2);
-report("KEEPER (trio)", ["mira", "biscuit", "wisp"], "t_boss_keeper", 2);
-report("depths inklet pair (trio)", ["mira", "biscuit", "wisp"], "t_inklet_pair", 3);
+report("dunes fine (trio)", ["mira", "biscuit", "wisp"], "t_fine", 2);
+report("dunes pair (trio)", ["mira", "biscuit", "wisp"], "t_dunes_pair", 2);
+report("SMOOTHER (quartet)", ["mira", "biscuit", "wisp", "stub"], "t_boss_smoother", 2);
+report("bay clasp (quartet)", ["mira", "biscuit", "wisp", "stub"], "t_crab", 3);
+report("KEEPER (quartet)", ["mira", "biscuit", "wisp", "stub"], "t_boss_keeper", 3);
+report("works ticktick (quartet)", ["mira", "biscuit", "wisp", "stub"], "t_ticktick", 4);
+report("works pair (quartet)", ["mira", "biscuit", "wisp", "stub"], "t_works_pair", 4);
+report("ORACLE (quartet)", ["mira", "biscuit", "wisp", "stub"], "t_boss_oracle", 4);
+report("depths inklet pair (4)", ["mira", "biscuit", "wisp", "stub"], "t_inklet_pair", 5);
+report("EMBER superboss (4, 6pg)", ["mira", "biscuit", "wisp", "stub"], "t_boss_unfinished", 6);

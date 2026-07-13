@@ -15,4 +15,9 @@ export const PARTY_DEFS = {
     hp: 34, ink: 30, atk: 7, def: 5, spd: 10,
     skills: ["warm_glow", "candlelight", "soft_song"],
   },
+  stub: {
+    name: "Stub", portrait: "stub",
+    hp: 40, ink: 26, atk: 8, def: 5, spd: 12,
+    skills: ["sun_stroke", "sunrise_sketch", "bright_idea"],
+  },
 };

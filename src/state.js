@@ -21,6 +21,7 @@ export function newGameState() {
     pages: 0,
     party: [newMember("mira")],
     inventory: { cookie: 2, juice: 1 },
+    journal: {},
     steps: 0,
     playMs: 0,
   };
@@ -64,6 +65,7 @@ export function clearSave() {
 // Old saves stay loadable when the game grows: a member saved before a skill
 // was added to their PARTY_DEFS entry learns it here, in saved order first.
 function migrateSave(s) {
+  if (!s.journal) s.journal = {};
   for (const m of s.party) {
     const d = PARTY_DEFS[m.id];
     if (!d) continue;

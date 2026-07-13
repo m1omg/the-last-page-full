@@ -100,3 +100,16 @@ trumpets); real-world scenes are never played for laughs. Mom is kind and
 exhausted, not neglectful. Ren is missed, not idealized — the fight was real.
 The guide book, the walkie-talkie gap on the shelf, and the treehouse drawing
 above the bed carry the friendship without flashbacks.
+
+
+## The Full Edition (2026-07-13)
+
+This repo is the extended cut, commissioned after the original shipped:
+"please make a second version, the-last-page-full, that will be a longer,
+more fleshed out version of this game." Extended timeline, two new worlds
+(the Eraser Dunes = denial, the If-Then Works = bargaining — completing the
+grief-stage boss set), a fourth party member (Stub, Ren's worn-down sun
+crayon), six torn pages, charms, a friend journal, side quests, a failed
+first hospital walk mid-story, the post-Smudge Mending chapter, and the
+optional superboss THE UNFINISHED ONE (Ember). The compact original remains
+at github.com/m1omg/the-last-page — both stay playable, separate saves.

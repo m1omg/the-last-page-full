@@ -12,7 +12,7 @@ export class Menu {
   constructor(game) {
     this.game = game;
     this.open = false;
-    this.tab = 0; // 0 items, 1 party info, 2 options
+    this.tab = 0; // 0 items, 1 party info, 2 journal, 3 options
     this.index = 0;
     this.sub = null; // { item, index } choosing member for item
     this.notice = "";   // transient confirmation line (e.g. "Progress saved.")
@@ -91,7 +91,16 @@ export class Menu {
       if (input.hit("confirm")) {
         const m = st.party[this.sub.index];
         const item = ITEMS[this.sub.item];
-        if (m.hp <= 0 || (item.effect.hp && m.hp >= m.maxHp) || (item.effect.ink && m.ink >= m.maxInk)) {
+        if (item.charm) {
+          // wearing a new charm hands the old one back to the pockets
+          if (m.charm) st.inventory[m.charm] = (st.inventory[m.charm] || 0) + 1;
+          m.charm = this.sub.item;
+          st.inventory[this.sub.item]--;
+          if (!st.inventory[this.sub.item]) delete st.inventory[this.sub.item];
+          audio.sfx("sfx_save");
+          this.toast(`${m.name} wears the ${item.name}.`);
+          this.sub = null;
+        } else if (m.hp <= 0 || (item.effect.hp && m.hp >= m.maxHp) || (item.effect.ink && m.ink >= m.maxInk)) {
           audio.sfx("sfx_cancel");
         } else {
           st.inventory[this.sub.item]--;
@@ -112,8 +121,8 @@ export class Menu {
       audio.sfx("sfx_cancel");
       return;
     }
-    if (input.hit("left")) { this.tab = (this.tab + 2) % 3; this.index = 0; audio.sfx("sfx_blip", 0.5); }
-    if (input.hit("right")) { this.tab = (this.tab + 1) % 3; this.index = 0; audio.sfx("sfx_blip", 0.5); }
+    if (input.hit("left")) { this.tab = (this.tab + 3) % 4; this.index = 0; audio.sfx("sfx_blip", 0.5); }
+    if (input.hit("right")) { this.tab = (this.tab + 1) % 4; this.index = 0; audio.sfx("sfx_blip", 0.5); }
     if (this.tab === 0) {
       const list = this.itemList();
       if (list.length) {
@@ -127,13 +136,16 @@ export class Menu {
             input.consume("confirm");
             audio.sfx("sfx_confirm");
             this.game.runScript(ITEMS[id].script);
+          } else if (ITEMS[id].charm) {
+            this.sub = { item: id, index: 0 };
+            audio.sfx("sfx_confirm");
           } else if (ITEMS[id].field && !ITEMS[id].key) {
             this.sub = { item: id, index: 0 };
             audio.sfx("sfx_confirm");
           } else audio.sfx("sfx_cancel");
         }
       }
-    } else if (this.tab === 2) {
+    } else if (this.tab === 3) {
       const list = this.optionItems();
       if (input.hit("up")) { this.index = (this.index + list.length - 1) % list.length; audio.sfx("sfx_blip", 0.5); }
       if (input.hit("down")) { this.index = (this.index + 1) % list.length; audio.sfx("sfx_blip", 0.5); }
@@ -159,16 +171,16 @@ export class Menu {
     });
     hotspots.block(90, 60, 780, 600);
     drawBox(ctx, 90, 60, 780, 600, { seed: 77 });
-    const tabs = ["Pockets", "Friends", "Options"];
+    const tabs = ["Pockets", "Friends", "Journal", "Options"];
     tabs.forEach((tName, i) => {
       const sel = i === this.tab;
-      hotspots.add(120 + i * 180, 78, 160, 48, () => {
+      hotspots.add(112 + i * 150, 78, 140, 48, () => {
         if (this.tab !== i) { this.tab = i; this.index = 0; this.sub = null; audio.sfx("sfx_blip", 0.5); }
       });
-      drawBox(ctx, 120 + i * 180, 80, 160, 44, { seed: 80 + i, fill: sel ? "#f4d8a8" : "rgba(255,252,240,0.9)" });
-      drawText(ctx, tName, 200 + i * 180, 90, { size: 20, bold: sel, align: "center", color: sel ? "#8a4a2a" : "#6a5a4a" });
+      drawBox(ctx, 112 + i * 150, 80, 140, 44, { seed: 80 + i, fill: sel ? "#f4d8a8" : "rgba(255,252,240,0.9)" });
+      drawText(ctx, tName, 182 + i * 150, 90, { size: 19, bold: sel, align: "center", color: sel ? "#8a4a2a" : "#6a5a4a" });
     });
-    drawText(ctx, `Torn pages: ${st.pages}/4`, 700, 92, { size: 18, color: "#7a4a2a" });
+    drawText(ctx, `Torn pages: ${st.pages}/6`, 745, 92, { size: 18, color: "#7a4a2a" });
 
     if (this.tab === 0) {
       const list = this.itemList();
@@ -202,14 +214,34 @@ export class Menu {
       }
     } else if (this.tab === 1) {
       st.party.forEach((m, i) => {
-        const by = 150 + i * 160;
-        drawBox(ctx, 130, by, 700, 140, { seed: 90 + i });
+        const step = st.party.length > 3 ? 122 : 160;
+        const by = 150 + i * step;
+        drawBox(ctx, 130, by, 700, Math.min(140, step - 10), { seed: 90 + i });
         drawText(ctx, m.name, 160, by + 14, { size: 22, bold: true, color: "#5a4634" });
         drawBar(ctx, 160, by + 55, 240, 20, m.hp / m.maxHp, "#c25a4a", `HP ${m.hp}/${m.maxHp}`);
         drawBar(ctx, 160, by + 85, 240, 20, m.ink / m.maxInk, "#5a7fc4", `INK ${m.ink}/${m.maxInk}`);
         drawText(ctx, `Attack ${m.atk}   Defense ${m.def}   Speed ${m.spd}`, 440, by + 55, { size: 18, color: "#5a4634" });
-        drawText(ctx, FLAVOR[m.id] || "", 440, by + 88, { size: 16, color: "#8a7a68" });
+        drawText(ctx, m.charm ? `Wears: ${ITEMS[m.charm] ? ITEMS[m.charm].name : m.charm}` : "Wears: nothing yet", 440, by + 82, { size: 16, color: "#7a5a8a" });
+        drawText(ctx, FLAVOR[m.id] || "", 440, by + 106, { size: 15, color: "#8a7a68" });
       });
+    } else if (this.tab === 2) {
+      const entries = journalEntries(st);
+      const done = entries.filter((e) => e.status === "friend").length;
+      drawText(ctx, `Friends made: ${done}/${entries.length}`, 140, 140, { size: 19, bold: true, color: "#7a4a2a" });
+      entries.forEach((e, i) => {
+        const col = i < 7 ? 0 : 1;
+        const ey = 180 + (i % 7) * 58;
+        const ex = 140 + col * 360;
+        drawText(ctx, e.status === "unknown" ? "?????" : e.name, ex, ey, {
+          size: 19, bold: e.status === "friend",
+          color: e.status === "friend" ? "#5a7a4a" : e.status === "torn" ? "#9a6a6a" : "#8a7a68",
+        });
+        drawText(ctx, e.status === "friend" ? "♥ friend" : e.status === "torn" ? "…torn away" : "not yet met",
+          ex, ey + 24, { size: 14, color: "#8a7a68" });
+      });
+      if (done === entries.length) {
+        drawText(ctx, "Every doodle is smiling. Something unfinished is waiting on the Blank Page.", 140, 600, { size: 16, color: "#7a5a8a" });
+      }
     } else {
       const list = this.optionItems();
       // Six rows. 44px apart keeps the last one ("Return to the title")
@@ -236,6 +268,17 @@ export class Menu {
     }
     drawText(ctx, "←/→ switch tabs · Z choose · X close", 480, 630, { size: 16, align: "center", color: "#8a7a68" });
   }
+}
+
+import { ENEMIES } from "./data/enemies.js";
+function journalEntries(st) {
+  return Object.keys(ENEMIES)
+    .filter((k) => ENEMIES[k].calmNeed && !ENEMIES[k].reachStory && k !== "unfinished")
+    .map((k) => ({
+      name: ENEMIES[k].name,
+      status: st.journal && st.journal[k] === "peace" ? "friend"
+        : st.journal && st.journal[k] === "win" ? "torn" : "unknown",
+    }));
 }
 
 const FLAVOR = {

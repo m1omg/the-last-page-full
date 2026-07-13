@@ -45,4 +45,20 @@ export const SKILLS = {
     desc: "A lullaby hummed off-key. Enemy becomes GLOOMY.",
     kind: "emotion", emotion: "gloomy",
   },
+  // ---- Stub
+  sun_stroke: {
+    name: "Sun Stroke", ink: 3, target: "enemy",
+    desc: "One proud stroke of warm yellow. 120% damage, and Stub gets GIGGLY drawing it.",
+    kind: "attack", mult: 1.2, selfEmotion: "giggly",
+  },
+  sunrise_sketch: {
+    name: "Sunrise Sketch", ink: 8, target: "self",
+    desc: "Stub draws a sun so warm the whole party turns GIGGLY.",
+    kind: "emotion_party", emotion: "giggly",
+  },
+  bright_idea: {
+    name: "Bright Idea", ink: 0, target: "ally",
+    desc: "Stub shares its wax. Gives an ally 6 of Stub's Ink.",
+    kind: "inkgift", amount: 6,
+  },
 };
