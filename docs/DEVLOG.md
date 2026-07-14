@@ -388,3 +388,19 @@ A follow-up tuning session, all changes sim-checked against §9's bands:
   didn't read as a swan. Prompt rewritten; the baked `bg_woods_2` got an
   in-place GPT Image 2 edit (crane → swan) so the lit `bg_woods_2_risen`
   variant still matches.
+
+### 13.1 Player-reported dunes flaws (same day)
+
+- **Stub met at the wrong tile.** The meet-scene text has Stub "hurling itself
+  at the ghost half of the tree," but the NPC stood at (6,4) — right of the
+  *drawn* half. Moved to (1,5), on the ghost side; smoke test updated to
+  approach from below.
+- **The streaks existed only in prose.** `bg_dunes_1` got a second in-place
+  GPT Image 2 edit: small yellow crayon zigzags on the ghost foliage/trunk
+  (Stub's handiwork), plus visible sandy trail openings where the grid's
+  row-1, row-7 and row-11/12 crossings pierce the dune ridges — the walkable
+  side areas previously looked sealed off. Audit overlay re-checked; the
+  trails land on the walkable rows.
+- **"Ren drew the bark wrong" confused a player** — it's the dog's woof, not
+  tree bark. Stub now says Ren wrote the bark in the speech bubble as
+  "BORK!", and the Smoother's "Name the erased dog" line matches.

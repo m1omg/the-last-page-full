@@ -430,7 +430,7 @@ export const MAPS = {
       { id: "exit", x: 9, y: 13, w: 3, h: 1, touch: "s_dunes_to_blank" },
       { id: "gate", x: 9, y: 0, w: 3, h: 1, touch: "s_dunes_to_dunes2" },
       { id: "tree", x: 2, y: 2, w: 4, h: 5, interact: "s_dunes_tree" },
-      { id: "stub_npc", x: 6, y: 4, w: 1, h: 1, sprite: "sp_stub", interact: "s_meet_stub", hidden: { flag: "stub_joined", is: true } },
+      { id: "stub_npc", x: 1, y: 5, w: 1, h: 1, sprite: "sp_stub", interact: "s_meet_stub", hidden: { flag: "stub_joined", is: true } },
       { id: "bench", x: 2, y: 8, w: 4, h: 3, interact: "s_dunes_bench" },
       { id: "sign", x: 15, y: 2, w: 4, h: 3, interact: "s_dunes_sign" },
       { id: "picnic", x: 13, y: 5, w: 6, h: 5, interact: "s_dunes_picnic" },

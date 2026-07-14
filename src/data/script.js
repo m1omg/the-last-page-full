@@ -647,7 +647,7 @@ export const SCRIPTS = {
     ], else: [
       { t: "if", flag: "stub_joined", is: true, then: [
         n("A dog-shaped almost-nothing. A spot over one eye, if you squint\nwith your whole heart."),
-        say("stub", "i remember this guy!! PATCH! page thirty-one! ren drew the bark wrong\nand you LIKED it wrong! come on - you trace, i'll color. TEAMWORK."),
+        say("stub", "i remember this guy!! PATCH! page thirty-one! ren wrote his bark\nin the speech bubble as 'BORK!' - wrong on purpose - and you LIKED it\nwrong! come on - you trace, i'll color. TEAMWORK."),
         { t: "choice", options: [
           { label: "Redraw the dog together", then: [
             n("You trace. Stub colors. The lines wobble, which is correct -\nthey always wobbled. A tail happens. The tail WAGS. PATCH is back."),

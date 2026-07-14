@@ -475,7 +475,7 @@ await g(`window.__game.tp("blank_page", 2, 3)`);
 await page.waitForTimeout(300); await waitIdle();
 await goThrough(2, 3, "up", "dunes_1"); // bump the pink crayon door at (2,2)
 step = "stub joins";
-await walkTo(7, 4); await g(`window.__game.game.state.facing="left"`); await key("KeyZ"); await waitIdle(25000);
+await walkTo(1, 6); await g(`window.__game.game.state.facing="up"`); await key("KeyZ"); await waitIdle(25000);
 if (!(await flag("stub_joined"))) fail("stub didn't join");
 if ((await g("window.__game.game.state.party.length")) !== 4) fail("party isn't 4 after stub");
 step = "bench charm (side quest)";

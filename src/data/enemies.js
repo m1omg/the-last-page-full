@@ -265,7 +265,7 @@ export const ENEMIES = {
     calmNeed: 6,
     reach: [
       { label: "\"It WAS drawn.\"", good: true, text: "The doodles in its belly press against the pale skin, like they heard. The smile flickers." },
-      { label: "Name the erased dog", good: true, text: "\"His name was PATCH. Right there. Spot over one eye, bark drawn wrong on purpose.\" The Smoother's brush hand trembles. It knows the name is still true." },
+      { label: "Name the erased dog", good: true, text: "\"His name was PATCH. Right there. Spot over one eye, his bark written 'BORK!' on purpose.\" The Smoother's brush hand trembles. It knows the name is still true." },
       { label: "\"Smooth isn't healed.\"", good: true, text: "The Smoother opens its eyes for the first time. They are very old and very tired of smiling." },
       { label: "Show your scraped knee", good: true, text: "You show it the scrape from the woods. \"See? Still here. Still mine.\" The Smoother stares at the unsmoothed thing, transfixed." },
       { label: "Ask it to erase the pain", good: false, text: "It brightens terribly and raises the brush. Wrong. WRONG. You want to remember - you want to WANT to remember." },
