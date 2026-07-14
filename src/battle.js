@@ -331,6 +331,12 @@ export class BattleScene {
   doSkill(a, act) {
     const sk = SKILLS[act.skill];
     if (a.ink < sk.ink) return;
+    // a torn friend can't take warmth (or borrowed ink) — refuse before the
+    // ink is spent, mirroring the snack message, instead of a paid no-op
+    if ((sk.kind === "heal" || sk.kind === "inkgift") && sk.target === "ally" && act.target && act.target.hp <= 0) {
+      this.queueMsg(`${act.target.name} is torn - warmth won't reach them. Glitter might.`);
+      return;
+    }
     a.ink -= sk.ink;
     if (sk.kind === "attack") {
       this.doAttack(a, act.target, sk.mult, sk.name);
@@ -351,7 +357,8 @@ export class BattleScene {
         t.hp += healed;
         this.addFloater(t, `+${healed}`, "#5aa85a");
       }
-      this.queueMsg(`${a.name} uses ${sk.name}! Warm light stitches everyone up a little.`);
+      if (sk.target === "allies") this.queueMsg(`${a.name} uses ${sk.name}! Everyone gathers close to the little flame - the whole party is stitched up a bit.`);
+      else this.queueMsg(`${a.name} uses ${sk.name}! A gentle warmth closes over ${targets[0].name}'s scribbles and torn edges.`);
     } else if (sk.kind === "wall") {
       this.wall = true;
       this.queueMsg(`${a.name} uses ${sk.name}! "NOBODY TOUCHES MY FRIENDS." The party is shielded this round!`);
@@ -391,7 +398,8 @@ export class BattleScene {
     if (item.effect.hp) { t.hp = Math.min(t.maxHp, t.hp + item.effect.hp); this.addFloater(t, `+${item.effect.hp}`, "#5aa85a"); }
     if (item.effect.ink) { t.ink = Math.min(t.maxInk, t.ink + item.effect.ink); this.addFloater(t, `+${item.effect.ink}✒`, "#5a7fc4"); }
     audio.sfx("sfx_heal");
-    this.queueMsg(`${a.name} shares a ${item.name} with ${t.name}. Small comforts count double in here.`);
+    if (t === a) this.queueMsg(`${a.name} takes a quiet moment with a ${item.name}. Small comforts count double in here.`);
+    else this.queueMsg(`${a.name} shares a ${item.name} with ${t.name}. Small comforts count double in here.`);
   }
 
   // Reach Out rules:

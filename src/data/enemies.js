@@ -257,13 +257,13 @@ export const ENEMIES = {
     calmNeed: 6,
     reach: [
       { label: "\"It WAS drawn.\"", good: true, text: "The doodles in its belly press against the pale skin, like they heard. The smile flickers." },
-      { label: "Name the erased dog", good: true, text: "\"There was a dog. Right there. It had a spot over one eye.\" The Smoother's brush hand trembles." },
+      { label: "Name the erased dog", good: true, text: "\"His name was PATCH. Right there. Spot over one eye, bark drawn wrong on purpose.\" The Smoother's brush hand trembles. It knows the name is still true." },
       { label: "\"Smooth isn't healed.\"", good: true, text: "The Smoother opens its eyes for the first time. They are very old and very tired of smiling." },
       { label: "Ask it to erase the pain", good: false, text: "It brightens terribly and raises the brush. Wrong. WRONG. You want to remember - you want to WANT to remember." },
     ],
     rallyText: "The Smoother's smile goes wide and thin as paper. \"LAST OFFER,\" it says, still kind. \"BLANK IS PAINLESS.\"",
     peaceText: "The Smoother exhales a lifetime of held smiles. The ghost doodles pour out of it like fish returning to a river, faint but swimming. \"...they stayed,\" it whispers. \"I rubbed and rubbed, and they stayed.\" It looks almost happy. Actually happy, this time.",
-    winText: "The Smoother comes apart into a drift of pink crumbs. The ghost doodles it held escape upward like bubbles, and somewhere in the dunes, a faint dog barks once.",
+    winText: "The Smoother comes apart into a drift of pink crumbs. The ghost doodles it held escape upward like bubbles, and somewhere in the dunes, Patch barks once, faint but certain.",
   },
   oracle: {
     name: "THE WIND-UP ORACLE", img: "boss_oracle", boss: true,

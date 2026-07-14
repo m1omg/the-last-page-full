@@ -235,6 +235,22 @@ The pacifist route is a real puzzle, not a mercy button.
   are solid except a single doorstep tile under each painted door; arrivals land
   *on* the doorstep (spawning on a touch tile doesn't fire it — only completed
   moves do).
+- **The missable fourth friend.** The Eraser Dunes shipped as a maze of
+  one-tile corridors that didn't match the painted open sand, so players walked
+  the only obvious path — straight to the boss — never meeting Stub or either
+  wild doodle, while the boss cutscene still gave Stub dialogue as if he'd
+  joined. **Fix:** the grid was opened where the art is soft (the bottom fan),
+  putting both encounters inside chase range of the natural walk; and
+  `s_dunes_boss` now has Stub skid in and join on the spot if `stub_joined` is
+  still unset — a story-critical member must not be missable. Regression-tested
+  in `tools/regress.mjs`, which drives the skipped-Stub path to the boss and
+  asserts a four-member battle.
+- **Self-narrating snacks & twin heal messages.** Using a snack on yourself
+  read "Mira shares a Sugar Cookie with Mira", and Warm Glow / Candlelight
+  printed the identical battle line. Both were single shared strings in
+  `battle.js`; both now branch on the actual situation. And the Smoother's
+  "Name the erased dog" option never named him — he's PATCH now, consistently,
+  from the boss fight to the redraw scene.
 - **The self-matching process footgun.** `pgrep -f smoke.mjs` and
   `pkill -f 'node tools/smoke.mjs'` match the *invoking shell's own command
   line*, spawning zombie watcher loops and once killing the controlling shell.

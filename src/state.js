@@ -66,6 +66,19 @@ export function clearSave() {
 // was added to their PARTY_DEFS entry learns it here, in saved order first.
 function migrateSave(s) {
   if (!s.journal) s.journal = {};
+  // story repair: the Smoother could once be beaten without ever meeting Stub,
+  // stranding a save with a story-critical member missing for the rest of the
+  // game. Fold him in the way s_dunes_boss now does before the fight — and
+  // grant the torn-page growth (pages 3+) he'd have earned from that point,
+  // since the `page` command only buffs members present when it runs.
+  if (s.flags.dunes_boss_done) s.flags.stub_joined = true;
+  if (s.flags.stub_joined && !s.party.find((m) => m.id === "stub")) {
+    const stub = newMember("stub");
+    const owed = Object.keys(s.inventory).filter((k) => /^page[3-9]$/.test(k)).length;
+    stub.maxHp += 8 * owed; stub.maxInk += 4 * owed;
+    stub.hp = stub.maxHp; stub.ink = stub.maxInk;
+    s.party.push(stub);
+  }
   for (const m of s.party) {
     const d = PARTY_DEFS[m.id];
     if (!d) continue;

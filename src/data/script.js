@@ -599,6 +599,17 @@ export const SCRIPTS = {
   ],
   s_dunes_boss: [
     n("The pale flat opens around you. Ghost-outlines everywhere - a dog,\na kite, a little house - all rubbed to almost-nothing, all still trying."),
+    { t: "if", flag: "stub_joined", is: false, then: [
+      n("Something small and yellow comes skidding down the dune behind you,\nyelling the whole way."),
+      say("???", "WAIT. WAIT WAIT WAIT. you do NOT walk up to the management\nwithout YELLOW."),
+      mira("neutral", "...you're Ren's sun crayon. From our pocket! You've been out HERE?"),
+      say("stub", "holding the line. one sun at a time. and losing, okay, FINE -\nbut that ends now. i'm coming with you. i draw the suns. NON-negotiable."),
+      { t: "sfx", name: "sfx_victory" },
+      { t: "flag", key: "stub_joined", value: true },
+      { t: "join", member: "stub" },
+      n("STUB joined the party!"),
+      say("biscuit", "Welcome, Sir Stub! You may guard my left flank. It is the crumbliest."),
+    ], else: [] },
     say("stub", "there. THERE. that's the management. smile's already on. brace."),
     n("Something vast and soft unfolds from behind the monolith, beaming."),
     { t: "battle", troop: "t_boss_smoother", boss: true, flagWin: "dunes_boss_done",
@@ -632,14 +643,14 @@ export const SCRIPTS = {
   ],
   s_ghost_dog: [
     { t: "if", flag: "dog_redrawn", is: true, then: [
-      n("The little dog gleams in fresh crayon, one ear yellow because Stub\ninsisted. It chases its tail in a circle, exactly where it was erased."),
+      n("PATCH gleams in fresh crayon, one ear yellow because Stub insisted.\nHe chases his tail in a circle, exactly where he was erased."),
     ], else: [
       { t: "if", flag: "stub_joined", is: true, then: [
         n("A dog-shaped almost-nothing. A spot over one eye, if you squint\nwith your whole heart."),
-        say("stub", "i remember this guy!! page thirty-one! ren drew the bark wrong and\nyou LIKED it wrong! come on - you trace, i'll color. TEAMWORK."),
+        say("stub", "i remember this guy!! PATCH! page thirty-one! ren drew the bark wrong\nand you LIKED it wrong! come on - you trace, i'll color. TEAMWORK."),
         { t: "choice", options: [
           { label: "Redraw the dog together", then: [
-            n("You trace. Stub colors. The lines wobble, which is correct -\nthey always wobbled. A tail happens. The tail WAGS."),
+            n("You trace. Stub colors. The lines wobble, which is correct -\nthey always wobbled. A tail happens. The tail WAGS. PATCH is back."),
             { t: "sfx", name: "sfx_victory" },
             n("The little dog shakes itself from ears to tail, sneezes a puff of\ncrayon dust, and drops something at your feet: a RAINY-DAY STAMP."),
             { t: "give", item: "charm_stamp" },

@@ -1,0 +1,205 @@
+// regress.mjs — targeted regressions for player-reported bugs (2026-07):
+//   1. using a snack on yourself must not read "Mira shares … with Mira"
+//   2. Warm Glow and Candlelight must not print the same battle message
+//   3. dunes_1 must be open enough that both wild doodles can actually
+//      engage someone walking the bottom of the map, and every open tile
+//      must be reachable from the entrance
+//   4. the Smoother's "Name the erased dog" option must actually name him
+//   5. skipping Stub at the tree must still put him in the party before
+//      the Smoother fight (he is story-critical everywhere after the dunes)
+import { chromium } from "playwright";
+import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
+import { join, dirname, extname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".jpg": "image/jpeg", ".wav": "audio/wav", ".json": "application/json", ".woff2": "font/woff2" };
+const server = createServer(async (req, res) => {
+  try {
+    let p = decodeURIComponent(new URL(req.url, "http://x").pathname);
+    if (p === "/") p = "/index.html";
+    const data = await readFile(join(root, p));
+    res.writeHead(200, { "content-type": MIME[extname(p)] || "application/octet-stream" });
+    res.end(data);
+  } catch { res.writeHead(404); res.end("nope"); }
+});
+await new Promise((r) => server.listen(0, r));
+const port = server.address().port;
+
+let step = "boot";
+const fail = (msg) => { console.error(`FAIL at [${step}]: ${msg}`); process.exit(1); };
+
+// ---------- static checks (no browser needed)
+step = "dunes_1 grid";
+const { MAPS } = await import(join(root, "src/data/maps.js"));
+{
+  const d = MAPS.dunes_1;
+  const open = new Set();
+  for (let y = 0; y < 15; y++) for (let x = 0; x < 20; x++) if (d.grid[y][x] === ".") open.add(`${x},${y}`);
+  const seen = new Set(["10,12"]);
+  const q = [[10, 12]];
+  while (q.length) {
+    const [x, y] = q.shift();
+    for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+      const k = `${x + dx},${y + dy}`;
+      if (!open.has(k) || seen.has(k)) continue;
+      seen.add(k); q.push([x + dx, y + dy]);
+    }
+  }
+  for (const k of open) if (!seen.has(k)) fail(`tile ${k} unreachable from the dunes_1 entrance`);
+  // both wild doodles must sit within chase range (5) of the open bottom
+  // walk (rows 11-12), or a player exploring the fan never meets a fight
+  const walk = [];
+  for (let y = 11; y <= 12; y++) for (let x = 1; x <= 18; x++) if (d.grid[y][x] === ".") walk.push([x, y]);
+  for (const e of d.entities.filter((e) => e.sprite?.startsWith("enemy:"))) {
+    const min = Math.min(...walk.map(([px, py]) => Math.abs(px - e.x) + Math.abs(py - e.y)));
+    if (min > 5) fail(`${e.id} at (${e.x},${e.y}) can never engage from the bottom walk (min dist ${min})`);
+  }
+}
+
+step = "the dog has a name";
+const { ENEMIES } = await import(join(root, "src/data/enemies.js"));
+const { SCRIPTS } = await import(join(root, "src/data/script.js"));
+{
+  const opt = ENEMIES.smoother.reach.find((o) => o.label === "Name the erased dog");
+  if (!opt) fail("the Smoother lost its dog-naming option");
+  if (!/PATCH/i.test(opt.text)) fail(`"Name the erased dog" does not name him: ${JSON.stringify(opt.text)}`);
+  if (!/patch/i.test(ENEMIES.smoother.winText)) fail("the Smoother winText forgot Patch");
+  if (!/PATCH/i.test(JSON.stringify(SCRIPTS.s_ghost_dog))) fail("s_ghost_dog forgot Patch");
+}
+
+// ---------- live checks
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 980, height: 740 } });
+const errors = [];
+page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+page.on("pageerror", (e) => errors.push(String(e)));
+const g = (expr) => page.evaluate(expr);
+const key = async (k) => { await page.keyboard.press(k); await page.waitForTimeout(90); };
+const mode = () => g("window.__game.game.mode");
+
+async function driveDialogue(maxMs = 25000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < maxMs) {
+    if (!(await g("window.__game.busy()")) && (await mode()) === "map") return;
+    if (await g("window.__game.game.dialogue.active")) await key("KeyZ");
+    else await page.waitForTimeout(110);
+  }
+  fail(`dialogue never went idle (mode=${await mode()})`);
+}
+
+step = "boot";
+await page.goto(`http://localhost:${port}/?debug`);
+await page.waitForFunction("window.__ready === true", null, { timeout: 30000 });
+await page.waitForTimeout(500);
+await key("KeyZ"); // New Game
+await page.waitForTimeout(1700);
+await driveDialogue();
+
+step = "stub fallback join at the boss";
+await g(`window.__game.game.runScript([{ t: "join", member: "biscuit" }, { t: "join", member: "wisp" }])`);
+await page.waitForTimeout(200);
+await g(`window.__game.tp("dunes_2", 9, 6)`); // straight past the tree — Stub never met
+await page.waitForTimeout(400);
+await driveDialogue();
+await g(`window.__game.game.state.party.forEach(m => { m.maxHp += 16; m.hp = m.maxHp; })`); // ~2 torn pages of growth
+await g(`window.__game.tp("dunes_2", 9, 5)`);
+await page.waitForTimeout(300);
+await page.keyboard.down("ArrowUp"); await page.waitForTimeout(220); await page.keyboard.up("ArrowUp");
+{
+  const t0 = Date.now();
+  let joined = false;
+  while ((await mode()) !== "battle") {
+    if (Date.now() - t0 > 30000) fail("smoother battle never started");
+    joined = joined || (await g("!!window.__game.game.state.flags.stub_joined"));
+    await key("KeyZ");
+  }
+  if (!joined) fail("stub_joined was never set before the boss battle");
+  const ids = await g("window.__game.game.state.party.map(m => m.id).join(',')");
+  if (!ids.includes("stub")) fail(`stub not in the party at the boss: [${ids}]`);
+  const combatants = await g("window.__game.game.battle.party.length");
+  if (combatants !== 4) fail(`boss battle started with ${combatants} combatants, expected 4`);
+}
+
+step = "battle messages";
+// capture messages, then drive the three cases directly on the live battle
+await g(`(() => {
+  const b = window.__game.game.battle;
+  window.__msgs = [];
+  const orig = b.queueMsg.bind(b);
+  b.queueMsg = (m) => { window.__msgs.push(m); orig(m); };
+  b.doItem(b.party[0], { item: "cookie", target: b.party[0] });
+  const wisp = b.party.find(m => m.id === "wisp");
+  b.party[0].hp = Math.max(1, b.party[0].hp - 30);
+  b.doSkill(wisp, { skill: "warm_glow", target: b.party[0] });
+  b.party.forEach(m => m.hp = Math.max(1, m.hp - 15));
+  b.doSkill(wisp, { skill: "candlelight" });
+})()`);
+{
+  const [cookie, glow, candle] = await g("window.__msgs");
+  if (/with Mira/.test(cookie)) fail(`solo snack still reads as sharing with yourself: ${JSON.stringify(cookie)}`);
+  if (!/takes a quiet moment with a Sugar Cookie/.test(cookie || "")) fail(`solo snack message looks wrong: ${JSON.stringify(cookie)}`);
+  // each heal must describe its own shape: single-target names the friend,
+  // party-wide gathers everyone — not just "the two strings differ"
+  if (!/closes over Mira/.test(glow || "")) fail(`Warm Glow message wrong: ${JSON.stringify(glow)}`);
+  if (!/whole party/.test(candle || "")) fail(`Candlelight message wrong: ${JSON.stringify(candle)}`);
+}
+
+step = "heal on a torn friend costs nothing";
+await g(`(() => {
+  const b = window.__game.game.battle;
+  const wisp = b.party.find(m => m.id === "wisp");
+  const mira = b.party[0];
+  const hpSave = mira.hp;
+  mira.hp = 0;
+  window.__tornInkBefore = wisp.ink;
+  b.doSkill(wisp, { skill: "warm_glow", target: mira });
+  window.__tornInkAfter = wisp.ink;
+  mira.hp = hpSave;
+})()`);
+{
+  const [before, after] = await g("[window.__tornInkBefore, window.__tornInkAfter]");
+  if (before !== after) fail(`Warm Glow on a torn ally still burns ink (${before} -> ${after})`);
+  const last = await g("window.__msgs[window.__msgs.length - 1]");
+  if (!/torn/.test(last || "")) fail(`no refusal message for healing a torn ally: ${JSON.stringify(last)}`);
+}
+
+step = "stranded save repair";
+// a save that already beat the Smoother without Stub (shipped bug) must come
+// back from Continue with Stub folded in by migrateSave
+await g(`(() => {
+  const member = (id) => ({ id, name: id, portrait: id, hp: 50, maxHp: 50, ink: 20, maxInk: 20,
+    atk: 10, def: 6, spd: 8, emotion: "neutral", guard: false, skills: [] });
+  localStorage.setItem("the-last-page-full-save", JSON.stringify({
+    version: 1, map: "blank_page", x: 9, y: 7, facing: "down",
+    flags: { intro_done: true, blank_intro_done: true, biscuit_joined: true, wisp_joined: true, dunes_boss_done: true },
+    pages: 3, party: [member("mira"), member("biscuit"), member("wisp")],
+    inventory: { cookie: 1, page1: 1, page2: 1, page3: 1 }, journal: {}, steps: 0, playMs: 0,
+  }));
+})()`);
+await page.reload();
+await page.waitForFunction("window.__ready === true", null, { timeout: 30000 });
+await page.waitForTimeout(500);
+await g(`window.__game.game.title.index = 0`); // Continue
+await key("KeyZ");
+{
+  const t0 = Date.now();
+  while ((await mode()) !== "map") {
+    if (Date.now() - t0 > 20000) fail("Continue never loaded the stranded save");
+    await page.waitForTimeout(150);
+  }
+  const ids = await g("window.__game.game.state.party.map(m => m.id).join(',')");
+  if (!ids.includes("stub")) fail(`stranded save not repaired — party is [${ids}]`);
+  if (!(await g("!!window.__game.game.state.flags.stub_joined"))) fail("stranded save repaired without setting stub_joined");
+  const stub = await g(`JSON.stringify(window.__game.game.state.party.find(m => m.id === "stub"))`).then(JSON.parse);
+  if (!stub.skills.length) fail("repaired Stub has no skills");
+  // page 3 was earned at the Smoother — the repaired Stub gets that growth
+  if (stub.maxHp !== 48 || stub.maxInk !== 30) fail(`repaired Stub missing page-3 growth: ${stub.maxHp}HP/${stub.maxInk}ink (want 48/30)`);
+}
+
+if (errors.length) fail("console errors during run:\n" + errors.join("\n"));
+console.log("REGRESS OK — dunes reachability, Patch, stub fallback join, stranded-save repair, battle messages");
+await browser.close();
+server.close();
+process.exit(0);

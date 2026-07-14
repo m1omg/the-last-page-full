@@ -125,6 +125,7 @@ tooling, engineering decisions, and the bugs worth remembering — is in
 
 ```bash
 node tools/validate.mjs     # static integrity: maps, scripts, assets, data
+node tools/regress.mjs      # regressions for player-reported bugs
 node tools/smoke.mjs        # headless full playthrough (true ending)
 SMOKE_ENDING=page node tools/smoke.mjs   # dream ending path
 node tools/touch_smoke.mjs  # both touch schemes, via real multi-touch (CDP)
