@@ -21,6 +21,7 @@ export const ENEMIES = {
     reach: [
       { label: "Offer a tissue", good: true, text: "Sniffle takes the tissue with both nubs. It blows its button nose. HONK." },
       { label: "Pat gently", good: true, text: "You pat the soggy little ghost. It leans into your hand." },
+      { label: "Cry a little too", good: true, text: "You let your own eyes sting. Sniffle stares - big kids leak too? Somehow that helps." },
       { label: "Stare", good: false, text: "You stare. Sniffle cries harder. Oh no." },
     ],
     peaceText: "Sniffle smiles a tiny wet smile, folds itself into a neat square, and drifts away.",
@@ -39,6 +40,7 @@ export const ENEMIES = {
     reach: [
       { label: "Untangle a line", good: true, text: "You gently pull one loose line free. Scribbles untenses, just a little." },
       { label: "Hum softly", good: true, text: "You hum. The tangle slows its vibrating to listen." },
+      { label: "Buzz along with it", good: true, text: "You shake your hands until they buzz like it does. Scribbles stops. Someone finally speaks static." },
       { label: "Poke it", good: false, text: "You poke the tangle. Your finger gets stuck. Everyone is upset." },
     ],
     peaceText: "Scribbles unravels into one long, relieved line, then curls up into a tidy ball of yarn and rolls off, purring.",
@@ -57,6 +59,7 @@ export const ENEMIES = {
     reach: [
       { label: "Compliment its thorns", good: true, text: "\"Those are excellent thorns,\" you say. Thornbud pretends not to care. Its petals loosen slightly." },
       { label: "Water it", good: true, text: "You share your juice box. Thornbud drinks angrily. Then less angrily." },
+      { label: "Sit among the thorns", good: true, text: "You sit down right in the prickle zone, unbothered. Thornbud keeps waiting for you to flinch. You don't." },
       { label: "Yank a petal", good: false, text: "You yank. OW. Bad idea for everyone involved." },
     ],
     peaceText: "Thornbud hmphs, turns away... and blooms when it thinks you can't see. It's a magnificent flower.",
@@ -75,6 +78,7 @@ export const ENEMIES = {
     reach: [
       { label: "Sew the loose thread", good: true, text: "You tuck the loose thread back through a buttonhole. Clasp sighs with its whole shell." },
       { label: "Wave hello", good: true, text: "You wave. Clasp waves back with both claws, then gets embarrassed." },
+      { label: "Polish its button", good: true, text: "You buff the big button with your sleeve until it shines. Clasp admires its reflection, claws clasped." },
       { label: "Snip the thread", good: false, text: "NO. WRONG. Clasp clutches its unraveling side, horrified." },
     ],
     peaceText: "Clasp, freshly mended, does a happy sideways dance and burrows into the felt sand.",
@@ -93,6 +97,7 @@ export const ENEMIES = {
     reach: [
       { label: "Pick it up", good: true, text: "It's freezing cold. You hold it anyway. It gets a little warmer." },
       { label: "Show it a doodle", good: true, text: "You draw a tiny sun and show it. The Inklet presses against the drawing." },
+      { label: "Hum it a lullaby", good: true, text: "You hum the going-to-sleep song. The Inklet ripples in time, almost purring." },
       { label: "Shoo it", good: false, text: "It doesn't leave. It just droops." },
     ],
     peaceText: "The Inklet glows faintly from inside, turns a deep friendly blue, and hops away leaving tiny flower-shaped ink prints.",
@@ -195,6 +200,7 @@ export const ENEMIES = {
       { label: "\"I'm listening.\"", good: true, text: "The scribbles slow. Somewhere inside, something is trying to talk." },
       { label: "Find the loose end", good: true, text: "You spot one trembling line sticking out, and hold it steady." },
       { label: "Breathe with it", good: true, text: "You breathe in... and out. Slow. The scribbles start to match your rhythm without meaning to." },
+      { label: "\"You can be loud.\"", good: true, text: "Permission. The roar wavers - nobody ever ALLOWED it before. Loud isn't the same as bad. It never knew." },
       { label: "Yell back", good: false, text: "You yell. It yells LOUDER. This is going nowhere." },
     ],
     rallyText: "TANGLE knots itself into one furious fist. It is not done being heard.",
@@ -216,6 +222,7 @@ export const ENEMIES = {
       { label: "Smooth a crease", good: true, text: "You smooth one crease with your thumb. The Swan shivers but lets you." },
       { label: "\"It still flies?\"", good: true, text: "You ask about the crumpled wing. The Swan lifts it, trembling. It does. Differently, but it does." },
       { label: "Sing to her", good: true, text: "You sing the fireflies' little tune, off-key. The Swan's folded neck lifts, remembering the words." },
+      { label: "Bow back", good: true, text: "You bow, low and serious, like she's still the Queen of the Woods. Because she is. The creased neck straightens an inch." },
       { label: "Look away", good: false, text: "You can't look at the broken part. The Swan folds it out of sight. Nothing gets better." },
     ],
     rallyText: "The Swan spreads BOTH wings - even the crumpled one - and the air goes sharp with paper edges.",
@@ -237,6 +244,7 @@ export const ENEMIES = {
       { label: "Listen to the bell", good: true, text: "You make yourself listen, all the way to the end of the ring. It's just a bell. It was always just a bell." },
       { label: "\"It wasn't the bell's fault.\"", good: true, text: "The Keeper's cracked face tilts. Its grip on the bell softens." },
       { label: "Hold its gloved hand", good: true, text: "You take the stiff porcelain hand. It's cold, then a little less cold. Nobody blames a hand for ringing a warning." },
+      { label: "Ring it together", good: true, text: "You put your hand over the gloved one and ring the bell once, on purpose, together. Shared, the sound is so much smaller." },
       { label: "Cover your ears", good: false, text: "You cover your ears. The ringing gets louder INSIDE." },
     ],
     rallyText: "The Bell Keeper's cracks glow faintly. It raises the little bell with both hands now.",
@@ -259,6 +267,7 @@ export const ENEMIES = {
       { label: "\"It WAS drawn.\"", good: true, text: "The doodles in its belly press against the pale skin, like they heard. The smile flickers." },
       { label: "Name the erased dog", good: true, text: "\"His name was PATCH. Right there. Spot over one eye, bark drawn wrong on purpose.\" The Smoother's brush hand trembles. It knows the name is still true." },
       { label: "\"Smooth isn't healed.\"", good: true, text: "The Smoother opens its eyes for the first time. They are very old and very tired of smiling." },
+      { label: "Show your scraped knee", good: true, text: "You show it the scrape from the woods. \"See? Still here. Still mine.\" The Smoother stares at the unsmoothed thing, transfixed." },
       { label: "Ask it to erase the pain", good: false, text: "It brightens terribly and raises the brush. Wrong. WRONG. You want to remember - you want to WANT to remember." },
     ],
     rallyText: "The Smoother's smile goes wide and thin as paper. \"LAST OFFER,\" it says, still kind. \"BLANK IS PAINLESS.\"",

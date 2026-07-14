@@ -3,21 +3,21 @@ export const PARTY_DEFS = {
   mira: {
     name: "Mira", portrait: "mira",
     hp: 45, ink: 20, atk: 10, def: 6, spd: 8,
-    skills: ["doodle_dash", "cheer", "grump_face", "silly_story"],
+    skills: ["doodle_dash", "cheer", "grump_face", "silly_story", "quiet_word"],
   },
   biscuit: {
     name: "Sir Biscuit", portrait: "biscuit",
     hp: 62, ink: 12, atk: 12, def: 10, spd: 5,
-    skills: ["valiant_chomp", "crumb_wall"],
+    skills: ["valiant_chomp", "crumb_wall", "emergency_biscuit"],
   },
   wisp: {
     name: "Wisp", portrait: "wisp",
     hp: 34, ink: 30, atk: 7, def: 5, spd: 10,
-    skills: ["warm_glow", "candlelight", "soft_song"],
+    skills: ["warm_glow", "candlelight", "soft_song", "dim_the_lights"],
   },
   stub: {
     name: "Stub", portrait: "stub",
     hp: 40, ink: 26, atk: 8, def: 5, spd: 12,
-    skills: ["sun_stroke", "sunrise_sketch", "bright_idea"],
+    skills: ["sun_stroke", "sunrise_sketch", "bright_idea", "tiny_sun"],
   },
 };

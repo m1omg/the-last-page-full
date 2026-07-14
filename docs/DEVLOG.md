@@ -350,3 +350,41 @@ Add `?debug` to the URL for a collision overlay and `window.__game` hooks.
 *Written at the close of the session that shipped the Full Edition. The compact
 original and the extended cut are both live, both green, and both keep their own
 saves.*
+
+---
+
+## 13. The pacing & kindness patch (2026-07-15)
+
+A follow-up tuning session, all changes sim-checked against §9's bands:
+
+- **+15% damage, both directions** — one multiplier at the top of `dmgTo`
+  (and on the Keeper's bell, which bypasses it), mirrored in
+  `tools/balance_sim.mjs`. Fights resolve about a round faster across the
+  board; regular enemies still land in 2–4, later bosses 5–8, superboss ~10
+  on the peace route.
+- **The encore rule** — a GIGGLY doodle now accepts the *same* kind line twice
+  in a row (`lastReach` is waived while giggly). Deepens the cheer gamble:
+  giggly already took two hearts a round, now a lone party member can supply
+  both.
+- **Softening softened** — calm-softening is now `max(0.7, 1 − 0.045·calm)`
+  (was `max(0.6, 1 − 0.06·calm)`): a doodle being talked down still stings,
+  so the peace route carries slightly more risk. Peace losses stayed 0% in
+  the sim.
+- **Peace pays better** — a soothed doodle gifts its item ×2 (torn ones still
+  drop ×1), and peace now restores +4 Ink alongside the +8 HP.
+- **One new skill per member** — Mira's Quiet Word (sets an enemy `neutral`
+  from the skill menu: a storm-break without burning a reach line — the
+  `emotion` skill kind gained a neutral-aware message), Sir Biscuit's
+  Emergency Biscuit (20 HP heal), Wisp's Dim the Lights (party-wide GLOOMY:
+  damage reduction + ink regen as a defensive stance), Stub's Tiny Sun
+  (enemy GIGGLY, the encore-rule enabler). Existing saves learn them via the
+  `migrateSave` skill fold — no save-shape change, still `version: 1`.
+- **One more good Reach Out option** on each early doodle and on Tangle, the
+  Swan, the Keeper and the Smoother, so the no-repeat rule bites less on
+  small rosters.
+- **Woods shrine fixes** — the whimper text said "behind the shrine" while
+  Wisp visibly hides in front of it; and the fallen queen was prompted as a
+  "fallen giant origami crane" in `tools/prompts.json`, which is why she
+  didn't read as a swan. Prompt rewritten; the baked `bg_woods_2` got an
+  in-place GPT Image 2 edit (crane → swan) so the lit `bg_woods_2_risen`
+  variant still matches.

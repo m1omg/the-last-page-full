@@ -460,7 +460,7 @@ export const SCRIPTS = {
     { t: "give", item: "match" }, { t: "flag", key: "got_match", value: true },
   ],
   s_meet_wisp: [
-    n("Behind the shrine, something small is trying very hard not to exist."),
+    n("In front of the shrine, something small is trying very hard not to exist."),
     say("???", "eep. no. i'm not here. i'm a... a lamp. an off lamp."),
     mira("neutral", "Wisp. It's me."),
     say("wisp", "M-Mira?? Oh no. Oh good. Oh no. You can SEE me, that means the dark didn't eat the whole - I mean. Hello. Welcome to the woods. Everything is terrible."),
@@ -478,7 +478,7 @@ export const SCRIPTS = {
       n("The great candle burns steady. The tea-lights lean toward it like children\nat story time."),
     ], else: [
       { t: "if", flag: "wisp_joined", is: false, then: [
-        n("A great white candle stands unlit in its paper alcove.\nSix tiny tea-lights flicker around it, barely holding on.\nSomething whimpers behind the shrine."),
+        n("A great white candle stands unlit in its paper alcove.\nSix tiny tea-lights flicker around it, barely holding on.\nSomething whimpers in front of the shrine."),
       ], else: [
         { t: "if", flag: "got_match", is: true, then: [
           say("wisp", "o-okay. the Brave Match. you strike it, I'll carry the flame up. together, right?"),

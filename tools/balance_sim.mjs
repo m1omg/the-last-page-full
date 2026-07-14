@@ -33,7 +33,7 @@ function mkFoes(troop) {
 }
 
 function dmgTo(t, raw, wall, isParty) {
-  let dmg = raw;
+  let dmg = raw * 1.15; // global pacing: +15% damage in both directions
   if (t.emotion === "grumpy") dmg *= 1.15;
   if (t.emotion === "gloomy") dmg *= 0.85;
   if (t.guard) dmg *= 0.5;
@@ -56,7 +56,7 @@ function enemyAct(e, party, wall) {
   const act = e.def.acts[Math.floor(Math.random() * e.def.acts.length)];
   const alive = party.filter((m) => m.hp > 0);
   if (!alive.length) return;
-  const soften = Math.max(0.6, 1 - 0.06 * e.calm);
+  const soften = Math.max(0.7, 1 - 0.045 * e.calm);
   if (act.kind === "attack") {
     const list = act.targets === "all" ? alive : [alive[Math.floor(Math.random() * alive.length)]];
     for (const t of list) {
@@ -75,14 +75,14 @@ function enemyAct(e, party, wall) {
   } else if (act.kind === "bell") {
     for (const t of alive) {
       t.emotion = "gloomy";
-      t.hp = Math.max(0, t.hp - Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * soften)));
+      t.hp = Math.max(0, t.hp - Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * 1.15 * soften)));
     }
   }
 }
 
 function reach(e, o) {
   if (!o.good) { e.calm = Math.max(0, e.calm - 1); if (e.emotion !== "giggly") e.emotion = e.storm; e.lastReach = null; return; }
-  if (o.label === e.lastReach) return;
+  if (o.label === e.lastReach && e.emotion !== "giggly") return; // giggly takes an encore
   if (e.emotion === e.storm) { e.emotion = "neutral"; e.lastReach = o.label; return; }
   if (e.settled >= (e.emotion === "giggly" ? 2 : 1)) return;
   e.calm++; e.settled++; e.lastReach = o.label;
@@ -126,7 +126,7 @@ function sim(partyIds, troop, policy, pages) {
           const sk = m.skills.map((s) => SKILLS[s]).find((s) => s.kind === "emotion" && s.target === "enemy" && s.emotion !== e.storm);
           if (sk && m.ink >= sk.ink) { acts.push({ t: "shift", m, tgt: e, sk }); continue; }
         }
-        const good = e.def.reach.filter((o) => o.good && o.label !== e.lastReach);
+        const good = e.def.reach.filter((o) => o.good && (o.label !== e.lastReach || e.emotion === "giggly"));
         acts.push({ t: "reach", m, tgt: e, o: good[Math.floor(Math.random() * good.length)] || e.def.reach.find((o) => o.good) });
       } else {
         const atkSk = m.skills.map((s) => [s, SKILLS[s]]).find(([, s]) => s.kind === "attack");

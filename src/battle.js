@@ -4,9 +4,10 @@
 // disadvantage = 0.75x). Emotions also give passive quirks:
 //   GIGGLY: 12% chance to dodge     GRUMPY: +20% dmg dealt, +15% dmg taken
 //   GLOOMY: -15% dmg taken, +1 ink/round
-// A GIGGLY doodle is also overexcited: its swings hit 15% harder, and it can
-// take TWO hearts a round instead of one — cheering an enemy up speeds peace,
-// but if the reach breaks down you're left fighting a dodgy, wild thing.
+// A GIGGLY doodle is also overexcited: its swings hit 15% harder, it can
+// take TWO hearts a round instead of one, and it accepts the same kind line
+// twice in a row — cheering an enemy up speeds peace, but if the reach breaks
+// down you're left fighting a dodgy, wild thing.
 import { ENEMIES, TROOPS } from "./data/enemies.js";
 import { SKILLS } from "./data/skills.js";
 import { ITEMS } from "./data/items.js";
@@ -209,7 +210,7 @@ export class BattleScene {
       }
       // the option that just landed is greyed out — it needs to hear something
       // new (two members can still race the same option; resolution fizzles it)
-      return opts.map((o) => ({ ref: o, label: o.label, disabled: !e.def.reachStory && o.good && o.label === e.lastReach }));
+      return opts.map((o) => ({ ref: o, label: o.label, disabled: !e.def.reachStory && o.good && o.label === e.lastReach && e.emotion !== "giggly" }));
     }
     if (menu.kind === "item") {
       const inv = this.game.state.inventory;
@@ -285,7 +286,7 @@ export class BattleScene {
   }
 
   dmgTo(target, raw) {
-    let dmg = raw;
+    let dmg = raw * 1.15; // global pacing: +15% damage in both directions
     if (target.emotion === "grumpy") dmg *= 1.15;
     if (target.emotion === "gloomy") dmg *= 0.85;
     const guardMult = target.charm === "charm_locket" ? 0.35 : 0.5;
@@ -346,8 +347,14 @@ export class BattleScene {
       if (!t) return;
       t.emotion = sk.emotion;
       audio.sfx("sfx_emotion");
-      this.addFloater(t, sk.emotion.toUpperCase(), EMOTION_COLOR[sk.emotion]);
-      this.queueMsg(`${a.name} uses ${sk.name}! ${t.name} becomes ${sk.emotion.toUpperCase()}!`);
+      if (sk.emotion === "neutral") {
+        // a calming word: the storm parts, same as a storm-breaking reach
+        this.addFloater(t, "listening...", "#e8d8a0");
+        this.queueMsg(`${a.name} uses ${sk.name}! ${t.name} goes quiet mid-feeling. It's LISTENING now.`);
+      } else {
+        this.addFloater(t, sk.emotion.toUpperCase(), EMOTION_COLOR[sk.emotion]);
+        this.queueMsg(`${a.name} uses ${sk.name}! ${t.name} becomes ${sk.emotion.toUpperCase()}!`);
+      }
     } else if (sk.kind === "heal") {
       const targets = sk.target === "allies" ? this.aliveParty() : [act.target || a];
       audio.sfx("sfx_heal");
@@ -407,7 +414,8 @@ export class BattleScene {
   //    first good option breaks the storm (emotion -> neutral) but gives no calm
   //  - a listening enemy (any emotion but its default) takes +1 calm...
   //  - ...at most once per round (settled) — twice while GIGGLY — and never
-  //    from the same option twice in a row (lastReach)
+  //    from the same option twice in a row (lastReach), except a GIGGLY
+  //    doodle, which loves an encore
   //  - a bad option costs a heart and brings the storm back; on a GIGGLY
   //    doodle the storm doesn't return — the giggle turns wild instead, and
   //    you're facing an enemy with the full cheerful buff (dodge, hard swings)
@@ -438,7 +446,7 @@ export class BattleScene {
         e.emotion = e.storm; // the storm comes back
         this.queueMsg(`${e.name} shrinks back into the bad feeling...${had > 0 ? " A heart flickers out." : ""}`);
       }
-    } else if (o.label === e.lastReach) {
+    } else if (o.label === e.lastReach && e.emotion !== "giggly") {
       this.queueMsg(`${e.name} nods along... but it just heard that one. It needs something NEW.`);
     } else if (e.emotion === e.storm) {
       // the storm gate: this reach breaks through, but the words don't land yet
@@ -478,8 +486,9 @@ export class BattleScene {
     const act = acts[Math.floor(Math.random() * acts.length)];
     const targets = this.aliveParty();
     if (!targets.length) return;
-    // every heart softens the swings — kindness is armor, even mid-fight
-    const soften = Math.max(0.6, 1 - 0.06 * e.calm);
+    // every heart softens the swings — kindness is armor, even mid-fight —
+    // but a doodle being talked down still stings (never below 70%)
+    const soften = Math.max(0.7, 1 - 0.045 * e.calm);
     const msg = (act.msg || "").replace("{e}", e.name);
     if (act.kind === "attack") {
       const list = act.targets === "all" ? targets : [targets[Math.floor(Math.random() * targets.length)]];
@@ -518,7 +527,7 @@ export class BattleScene {
       let text = msg;
       for (const t of targets) {
         t.emotion = "gloomy";
-        const dmg = Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * soften));
+        const dmg = Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * 1.15 * soften));
         t.hp = Math.max(0, t.hp - dmg);
         this.addFloater(t, `-${dmg}`, "#5a7fc4");
         text += `\n${t.name} takes ${dmg} and turns GLOOMY.`;
@@ -578,14 +587,19 @@ export class BattleScene {
         for (const e of this.enemies) {
           if (e.def.reward && e.def.reward.item) {
             const inv = this.game.state.inventory;
-            inv[e.def.reward.item] = (inv[e.def.reward.item] || 0) + 1;
-            items.push(ITEMS[e.def.reward.item].name);
+            // a soothed doodle presses a second gift into your hands
+            const n = e.soothed ? 2 : 1;
+            inv[e.def.reward.item] = (inv[e.def.reward.item] || 0) + n;
+            items.push(ITEMS[e.def.reward.item].name + (n > 1 ? " ×2" : ""));
           }
         }
         if (this.result === "peace") {
-          for (const m of this.aliveParty()) m.hp = Math.min(m.maxHp, m.hp + 8);
+          for (const m of this.aliveParty()) {
+            m.hp = Math.min(m.maxHp, m.hp + 8);
+            m.ink = Math.min(m.maxInk, m.ink + 4);
+          }
           audio.sfx("sfx_victory");
-          this.queueMsg(`Peace! Everyone feels a little lighter. (+8 HP to the party${items.length ? `, found: ${items.join(", ")}` : ""})`);
+          this.queueMsg(`Peace! Everyone feels a little lighter. (+8 HP and +4 Ink to the party${items.length ? `, gifts: ${items.join(", ")}` : ""})`);
         } else if (this.result === "win") {
           audio.sfx("sfx_victory");
           this.queueMsg(`The battle is over.${items.length ? ` Left behind: ${items.join(", ")}.` : ""}`);
