@@ -442,19 +442,26 @@ export class MapScene {
       f.x += (tx - f.x) * k;
       f.y += (ty - f.y) * k;
       const speed = Math.hypot(tx - f.x, ty - f.y);
-      // little hops while moving, gentle idle sway when standing
-      const hop = speed > 2 ? Math.abs(Math.sin(now / 90 + i * 2)) * 5 : Math.sin(now / 400 + i * 2) * 1.5;
+      // little hops while moving, gentle idle sway when standing — a TORN
+      // friend doesn't hop: they trail along faded and flat until mended
+      const torn = m.hp <= 0;
+      const hop = torn ? 0 : speed > 2 ? Math.abs(Math.sin(now / 90 + i * 2)) * 5 : Math.sin(now / 400 + i * 2) * 1.5;
       const img = assets.img(m.id === "biscuit" ? "sp_biscuit" : m.id === "stub" ? "sp_stub" : "sp_wisp");
+      if (torn) { ctx.save(); ctx.globalAlpha = 0.42; ctx.filter = "grayscale(0.7)"; }
       if (img) {
         drawSprite(ctx, img, f.x, f.y + 12 - hop, TILE * 1.2, "feet");
       } else {
         drawBlobFallback(ctx, f.x, f.y - hop, m.id === "biscuit" ? "#b07b3f" : "#e8a53a");
       }
+      if (torn) ctx.restore();
     });
 
-    // player
+    // player — same faded look when Mira herself is torn
     const [px, py] = this.playerPixelPos();
+    const miraTorn = st.party[0] && st.party[0].hp <= 0;
+    if (miraTorn) { ctx.save(); ctx.globalAlpha = 0.42; ctx.filter = "grayscale(0.7)"; }
     this.drawMira(ctx, px, py);
+    if (miraTorn) ctx.restore();
 
     // flyer: something alive in the sky, above everything on the page
     if (d.flyer && st.flags[d.flyer.flag]) this.drawFlyer(ctx, d.flyer);

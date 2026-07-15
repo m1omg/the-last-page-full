@@ -460,7 +460,7 @@ export const SCRIPTS = {
     { t: "give", item: "match" }, { t: "flag", key: "got_match", value: true },
   ],
   s_meet_wisp: [
-    n("In front of the shrine, something small is trying very hard not to exist."),
+    n("Tucked in behind the shrine's corner, something small is trying\nvery hard not to exist."),
     say("???", "eep. no. i'm not here. i'm a... a lamp. an off lamp."),
     mira("neutral", "Wisp. It's me."),
     say("wisp", "M-Mira?? Oh no. Oh good. Oh no. You can SEE me, that means the dark didn't eat the whole - I mean. Hello. Welcome to the woods. Everything is terrible."),
@@ -735,7 +735,7 @@ export const SCRIPTS = {
       "You both checked it every night. You found that out later, and it broke",
       "the thing in you that had been calling the silence 'proof'.",
     ] },
-    mira("gloomy", "We wasted a whole WEEK being right at each other. And then there\nwasn't a week left to waste."),
+    mira("gloomy", "We wasted a whole WEEK being RIGHT at each other. Not mad. RIGHT.\nAnd then there wasn't a week left to waste."),
     n("The theatre lights dim, kindly. Morning is coming through the curtains..."),
     { t: "fade", ms: 1500 }, { t: "stopbgm" },
     { t: "flag", key: "interlude_works", value: true },
@@ -937,7 +937,8 @@ export const SCRIPTS = {
       n("On the clean island in the center, one torn page lies alone.\nThe last one. You know it before you touch it."),
       { t: "page", n: 6 },
       { t: "cg", img: "cg_memory_4", lines: [
-        "Rain. The crosswalk. The sketchbook open on the wet asphalt,",
+        "Rain. Seven days after the fight. The crosswalk.",
+        "The sketchbook open on the wet asphalt,",
         "its colors bleeding out like the day itself.",
         "You were half a block behind, yelling \"WAIT - I DIDN'T MEAN IT -\"",
         "Ren turned around in the middle of the road to yell something back.",

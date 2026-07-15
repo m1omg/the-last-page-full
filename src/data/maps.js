@@ -311,9 +311,14 @@ export const MAPS = {
     entities: [
       { id: "exit", x: 9, y: 13, w: 2, h: 1, touch: "s_woods2_to_woods" },
       { id: "shrine", x: 7, y: 1, w: 6, h: 4, interact: "s_shrine" },
-      { id: "crane", x: 1, y: 6, w: 6, h: 4, interact: "s_crane", hidden: { flag: "woods_candle_lit", is: true } },
+      // the match is listed BEFORE the queen: her box covers its tile, and
+      // entityAt() takes the first hit — the sparkle must win while it's there
       { id: "spark_match", x: 3, y: 10, w: 1, h: 1, sprite: "sparkle", interact: "s_find_match", hidden: { flag: "got_match", is: true } },
-      { id: "wisp_npc", x: 13, y: 5, w: 1, h: 1, sprite: "sp_wisp", interact: "s_meet_wisp", hidden: { flag: "wisp_joined", is: true } },
+      // box covers the whole repainted fallen queen (cols 2-7, rows 6-12)
+      { id: "crane", x: 1, y: 6, w: 7, h: 6, interact: "s_crane", hidden: { flag: "woods_candle_lit", is: true } },
+      // (13,4): tucked at the shrine's back-right corner — the narration says
+      // the whimper comes from BEHIND the shrine, so that's where Wisp hides
+      { id: "wisp_npc", x: 13, y: 4, w: 1, h: 1, sprite: "sp_wisp", interact: "s_meet_wisp", hidden: { flag: "wisp_joined", is: true } },
       { id: "lantern", x: 14, y: 10, w: 1, h: 1, sprite: "lantern", interact: "s_lantern_save" },
     ],
   },
@@ -458,11 +463,16 @@ export const MAPS = {
       "###..............###",
       "###..............###",
       "###..............###",
-      "#########..#########",
+      "##....###..###....##",
       "####################",
     ],
     entities: [
       { id: "exit", x: 9, y: 12, w: 2, h: 1, touch: "s_dunes2_to_dunes" },
+      // the painting shows sandy paths leaving at BOTH bottom corners, not
+      // just the center — players kept bumping into invisible walls there,
+      // so all three painted paths are real exits back to the dunes
+      { id: "exit_l", x: 2, y: 13, w: 4, h: 1, touch: "s_dunes2_to_dunes" },
+      { id: "exit_r", x: 14, y: 13, w: 4, h: 1, touch: "s_dunes2_to_dunes" },
       { id: "monolith", x: 8, y: 0, w: 4, h: 4, interact: "s_monolith" },
       { id: "bosszone", x: 8, y: 4, w: 4, h: 1, touch: "s_dunes_boss", hidden: { flag: "dunes_boss_done", is: true } },
       { id: "ghost_dog", x: 5, y: 6, w: 3, h: 3, interact: "s_ghost_dog" },

@@ -449,7 +449,7 @@ await page.waitForTimeout(300); await waitIdle();
 await goThrough(9, 2, "up", "woods_1");
 await goThrough(9, 1, "up", "woods_2");
 step = "wisp";
-await walkTo(13, 6); await g(`window.__game.game.state.facing="up"`); await key("KeyZ"); await waitIdle(20000);
+await walkTo(13, 5); await g(`window.__game.game.state.facing="up"`); await key("KeyZ"); await waitIdle(20000); // wisp hides at (13,4), behind the shrine's corner
 if (!(await flag("wisp_joined"))) fail("wisp didn't join");
 await walkTo(3, 10); await key("KeyZ"); await waitIdle();
 if (!(await g("!!window.__game.game.state.inventory.match"))) fail("no match");
