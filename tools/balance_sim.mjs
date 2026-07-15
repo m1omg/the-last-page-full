@@ -15,6 +15,8 @@ const advMult = (a, d) => (ADV[a] === d ? 1.4 : ADV[d] === a ? 0.75 : 1.0);
 const RUNS = 400;
 const DAMAGE_MULT = 1.15; // shared pacing multiplier, applied in both directions
 const ENEMY_DAMAGE_MULT = 1.20; // battle.js: enemy-to-party difficulty increase
+const REGULAR_ENEMY_DAMAGE_MULT = 1.15; // battle.js: extra non-boss damage
+const REGULAR_ATTACK_WEIGHT = 2; // battle.js: non-boss attack selection weight
 
 // pages = torn pages collected before this fight: each grants +8 maxHp/+4 maxInk
 // (see the "page" command in src/cutscene.js) — the party's only growth
@@ -34,8 +36,12 @@ function mkFoes(troop) {
   });
 }
 
-function dmgTo(t, raw, wall, isParty) {
-  let dmg = raw * DAMAGE_MULT * (isParty ? ENEMY_DAMAGE_MULT : 1);
+function enemyDamageMult(e) {
+  return ENEMY_DAMAGE_MULT * (e && !e.def.boss ? REGULAR_ENEMY_DAMAGE_MULT : 1);
+}
+
+function dmgTo(t, raw, wall, isParty, sourceEnemy = null) {
+  let dmg = raw * DAMAGE_MULT * (isParty ? enemyDamageMult(sourceEnemy) : 1);
   if (t.emotion === "grumpy") dmg *= 1.15;
   if (t.emotion === "gloomy") dmg *= 0.85;
   if (t.guard) dmg *= 0.5;
@@ -54,8 +60,21 @@ function playerHit(a, t, mult) {
   return dmgTo(t, Math.max(1, raw), false, false);
 }
 
+function chooseEnemyAct(e) {
+  const acts = e.def.acts;
+  if (e.def.boss) return acts[Math.floor(Math.random() * acts.length)];
+
+  const weightOf = (act) => act.kind === "attack" ? REGULAR_ATTACK_WEIGHT : 1;
+  let roll = Math.random() * acts.reduce((total, act) => total + weightOf(act), 0);
+  for (const act of acts) {
+    roll -= weightOf(act);
+    if (roll < 0) return act;
+  }
+  return acts[acts.length - 1];
+}
+
 function enemyAct(e, party, wall) {
-  const act = e.def.acts[Math.floor(Math.random() * e.def.acts.length)];
+  const act = chooseEnemyAct(e);
   const alive = party.filter((m) => m.hp > 0);
   if (!alive.length) return;
   const soften = Math.max(0.7, 1 - 0.045 * e.calm);
@@ -67,7 +86,7 @@ function enemyAct(e, party, wall) {
       if (e.emotion === "giggly") raw *= 1.15; // overexcited — swings wild
       raw *= advMult(e.emotion, t.emotion);
       raw -= t.def * 0.55;
-      t.hp = Math.max(0, t.hp - dmgTo(t, Math.max(1, raw), wall, true));
+      t.hp = Math.max(0, t.hp - dmgTo(t, Math.max(1, raw), wall, true, e));
     }
   } else if (act.kind === "emotion") {
     if (act.target === "self") e.emotion = act.emotion;
@@ -77,7 +96,7 @@ function enemyAct(e, party, wall) {
   } else if (act.kind === "bell") {
     for (const t of alive) {
       t.emotion = "gloomy";
-      t.hp = Math.max(0, t.hp - Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * DAMAGE_MULT * ENEMY_DAMAGE_MULT * soften)));
+      t.hp = Math.max(0, t.hp - Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * DAMAGE_MULT * enemyDamageMult(e) * soften)));
     }
   }
 }

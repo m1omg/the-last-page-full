@@ -9,7 +9,8 @@
 //      the Smoother fight (he is story-critical everywhere after the dunes)
 //   6. old Bay saves must recover the lighthouse's new visual state, while a
 //      pre-install bulb save stays pre-install and can still use its bulb
-//   7. enemy hits must remain exactly 20% stronger than matching player hits
+//   7. boss hits must remain exactly 20% stronger than matching player hits,
+//      while regular doodles attack more often and hit 15% harder than bosses
 import { chromium } from "playwright";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
@@ -168,26 +169,86 @@ await g(`(() => {
   if (!/torn/.test(last || "")) fail(`no refusal message for healing a torn ally: ${JSON.stringify(last)}`);
 }
 
-step = "20 percent enemy damage";
+step = "regular enemy pressure";
 await g(`(() => {
   const b = window.__game.game.battle;
   const oldRandom = Math.random;
-  Math.random = () => 0.5;
+  const oldParty = b.party;
+  const oldWall = b.wall;
+  const oldQueueMsg = b.queueMsg;
+  const oldAddFloater = b.addFloater;
+  const oldShakeT = b.shakeT;
   try {
+    const target = { name: "Test Target", hp: 1000, emotion: "neutral", guard: false, def: 0 };
+    const attack = { kind: "attack", targets: "all", msg: "ATTACK" };
+    const makeEnemy = (boss, acts = [attack]) => ({
+      name: boss ? "Test Boss" : "Test Regular", atk: 100, emotion: "neutral", calm: 0,
+      def: { boss, acts },
+    });
+    const hit = (enemy) => {
+      target.hp = 1000;
+      target.emotion = "neutral";
+      b.doEnemyAct(enemy);
+      return 1000 - target.hp;
+    };
+
+    b.party = [target];
     b.wall = false;
-    const target = { emotion: "neutral", guard: false };
+    b.queueMsg = () => {};
+    b.addFloater = () => {};
+    Math.random = () => 0.5;
     window.__damageCheck = [
-      b.dmgTo(target, 100, false).dmg,
-      b.dmgTo(target, 100, true).dmg,
+      b.dmgTo({ emotion: "neutral", guard: false }, 100, false).dmg,
+      hit(makeEnemy(true)),
+      hit(makeEnemy(false)),
     ];
+
+    target.hp = 1000;
+    target.emotion = "neutral";
+    b.doEnemyAct(makeEnemy(true, [{ kind: "bell", msg: "BELL" }]));
+    window.__bellDamageCheck = 1000 - target.hp;
+
+    const acts = [
+      { kind: "attack", targets: "all", msg: "ATTACK" },
+      { kind: "emotion", target: "self", emotion: "grumpy", msg: "EMOTION" },
+      { kind: "idle", msg: "IDLE" },
+    ];
+    const pick = (boss, roll) => {
+      target.hp = 1000;
+      target.emotion = "neutral";
+      const messages = [];
+      b.queueMsg = (message) => messages.push(message);
+      Math.random = () => roll;
+      b.doEnemyAct(makeEnemy(boss, acts));
+      return messages[0].split("\\n")[0];
+    };
+    window.__actChoiceCheck = {
+      regular: [pick(false, 0.49), pick(false, 0.74), pick(false, 0.99)],
+      boss: pick(true, 0.49),
+    };
   } finally {
     Math.random = oldRandom;
+    b.party = oldParty;
+    b.wall = oldWall;
+    b.queueMsg = oldQueueMsg;
+    b.addFloater = oldAddFloater;
+    b.shakeT = oldShakeT;
   }
 })()`);
 {
-  const [outgoing, incoming] = await g("window.__damageCheck");
-  if (outgoing !== 115 || incoming !== 138) {
-    fail(`enemy damage multiplier drifted: got ${outgoing}/${incoming}, want 115/138`);
+  const [outgoing, bossIncoming, regularIncoming] = await g("window.__damageCheck");
+  if (outgoing !== 115 || bossIncoming !== 138 || regularIncoming !== 159) {
+    fail(`enemy damage multipliers drifted: got ${outgoing}/${bossIncoming}/${regularIncoming}, want 115/138/159`);
+  }
+  if ((await g("window.__bellDamageCheck")) !== 10) {
+    fail(`boss bell damage changed: got ${await g("window.__bellDamageCheck")}, want 10`);
+  }
+  const choices = await g("window.__actChoiceCheck");
+  if (choices.regular.join(",") !== "ATTACK,EMOTION,IDLE") {
+    fail(`regular enemies no longer give attacks double weight: ${JSON.stringify(choices.regular)}`);
+  }
+  if (choices.boss !== "EMOTION") {
+    fail(`boss enemy action selection changed: ${JSON.stringify(choices.boss)}`);
   }
 }
 
@@ -310,7 +371,7 @@ if (litLum < unlitLum + 4) {
 }
 
 if (errors.length) fail("console errors during run:\n" + errors.join("\n"));
-console.log("REGRESS OK — dunes reachability, Patch, Stub repair, battle messages, combat pressure, lighthouse state/render");
+console.log("REGRESS OK — dunes reachability, Patch, Stub repair, battle messages, regular combat pressure, lighthouse state/render");
 await browser.close();
 server.close();
 process.exit(0);

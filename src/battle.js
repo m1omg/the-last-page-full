@@ -20,11 +20,17 @@ import { hotspots } from "./hotspots.js";
 const ADV = { giggly: "grumpy", grumpy: "gloomy", gloomy: "giggly" };
 const DAMAGE_MULT = 1.15; // shared pacing multiplier, applied in both directions
 const ENEMY_DAMAGE_MULT = 1.20; // requested difficulty: +20% incoming pressure
+const REGULAR_ENEMY_DAMAGE_MULT = 1.15; // extra pressure for non-boss encounters
+const REGULAR_ATTACK_WEIGHT = 2; // non-boss attack actions are twice as likely
 
 function advMult(att, dfn) {
   if (ADV[att] === dfn) return 1.4;
   if (ADV[dfn] === att) return 0.75;
   return 1.0;
+}
+
+function enemyDamageMult(enemy) {
+  return ENEMY_DAMAGE_MULT * (enemy && !enemy.def.boss ? REGULAR_ENEMY_DAMAGE_MULT : 1);
 }
 
 export class BattleScene {
@@ -287,8 +293,8 @@ export class BattleScene {
     this.checkEnd();
   }
 
-  dmgTo(target, raw, enemyHit = false) {
-    let dmg = raw * DAMAGE_MULT * (enemyHit ? ENEMY_DAMAGE_MULT : 1);
+  dmgTo(target, raw, enemyHit = false, sourceEnemy = null) {
+    let dmg = raw * DAMAGE_MULT * (enemyHit ? enemyDamageMult(sourceEnemy) : 1);
     if (target.emotion === "grumpy") dmg *= 1.15;
     if (target.emotion === "gloomy") dmg *= 0.85;
     const guardMult = target.charm === "charm_locket" ? 0.35 : 0.5;
@@ -484,8 +490,7 @@ export class BattleScene {
   }
 
   doEnemyAct(e) {
-    const acts = e.def.acts;
-    const act = acts[Math.floor(Math.random() * acts.length)];
+    const act = this.chooseEnemyAct(e);
     const targets = this.aliveParty();
     if (!targets.length) return;
     // every heart softens the swings — kindness is armor, even mid-fight —
@@ -501,7 +506,7 @@ export class BattleScene {
         if (e.emotion === "giggly") raw *= 1.15; // overexcited — swings wild
         raw *= advMult(e.emotion, t.emotion);
         raw -= t.def * 0.55;
-        const { miss, dmg } = this.dmgTo(t, Math.max(1, raw), true);
+        const { miss, dmg } = this.dmgTo(t, Math.max(1, raw), true, e);
         if (miss) { text += `\n${t.name} giggles and dodges!`; continue; }
         t.hp = Math.max(0, t.hp - dmg);
         this.addFloater(t, `-${dmg}`, "#d4543a");
@@ -529,7 +534,7 @@ export class BattleScene {
       let text = msg;
       for (const t of targets) {
         t.emotion = "gloomy";
-        const dmg = Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * DAMAGE_MULT * ENEMY_DAMAGE_MULT * soften));
+        const dmg = Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * DAMAGE_MULT * enemyDamageMult(e) * soften));
         t.hp = Math.max(0, t.hp - dmg);
         this.addFloater(t, `-${dmg}`, "#5a7fc4");
         text += `\n${t.name} takes ${dmg} and turns GLOOMY.`;
@@ -538,6 +543,19 @@ export class BattleScene {
     } else {
       this.queueMsg(msg);
     }
+  }
+
+  chooseEnemyAct(e) {
+    const acts = e.def.acts;
+    if (e.def.boss) return acts[Math.floor(Math.random() * acts.length)];
+
+    const weightOf = (act) => act.kind === "attack" ? REGULAR_ATTACK_WEIGHT : 1;
+    let roll = Math.random() * acts.reduce((total, act) => total + weightOf(act), 0);
+    for (const act of acts) {
+      roll -= weightOf(act);
+      if (roll < 0) return act;
+    }
+    return acts[acts.length - 1];
   }
 
   endRound() {
