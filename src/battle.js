@@ -18,6 +18,8 @@ import { drawBox, drawText, drawBar, wrapText, FONT, EMOTION_COLOR, emotionTag }
 import { hotspots } from "./hotspots.js";
 
 const ADV = { giggly: "grumpy", grumpy: "gloomy", gloomy: "giggly" };
+const DAMAGE_MULT = 1.15; // shared pacing multiplier, applied in both directions
+const ENEMY_DAMAGE_MULT = 1.20; // requested difficulty: +20% incoming pressure
 
 function advMult(att, dfn) {
   if (ADV[att] === dfn) return 1.4;
@@ -285,8 +287,8 @@ export class BattleScene {
     this.checkEnd();
   }
 
-  dmgTo(target, raw) {
-    let dmg = raw * 1.15; // global pacing: +15% damage in both directions
+  dmgTo(target, raw, enemyHit = false) {
+    let dmg = raw * DAMAGE_MULT * (enemyHit ? ENEMY_DAMAGE_MULT : 1);
     if (target.emotion === "grumpy") dmg *= 1.15;
     if (target.emotion === "gloomy") dmg *= 0.85;
     const guardMult = target.charm === "charm_locket" ? 0.35 : 0.5;
@@ -499,7 +501,7 @@ export class BattleScene {
         if (e.emotion === "giggly") raw *= 1.15; // overexcited — swings wild
         raw *= advMult(e.emotion, t.emotion);
         raw -= t.def * 0.55;
-        const { miss, dmg } = this.dmgTo(t, Math.max(1, raw));
+        const { miss, dmg } = this.dmgTo(t, Math.max(1, raw), true);
         if (miss) { text += `\n${t.name} giggles and dodges!`; continue; }
         t.hp = Math.max(0, t.hp - dmg);
         this.addFloater(t, `-${dmg}`, "#d4543a");
@@ -527,7 +529,7 @@ export class BattleScene {
       let text = msg;
       for (const t of targets) {
         t.emotion = "gloomy";
-        const dmg = Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * 1.15 * soften));
+        const dmg = Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * DAMAGE_MULT * ENEMY_DAMAGE_MULT * soften));
         t.hp = Math.max(0, t.hp - dmg);
         this.addFloater(t, `-${dmg}`, "#5a7fc4");
         text += `\n${t.name} takes ${dmg} and turns GLOOMY.`;

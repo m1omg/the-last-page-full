@@ -7,6 +7,9 @@
 //   4. the Smoother's "Name the erased dog" option must actually name him
 //   5. skipping Stub at the tree must still put him in the party before
 //      the Smoother fight (he is story-critical everywhere after the dunes)
+//   6. old Bay saves must recover the lighthouse's new visual state, while a
+//      pre-install bulb save stays pre-install and can still use its bulb
+//   7. enemy hits must remain exactly 20% stronger than matching player hits
 import { chromium } from "playwright";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
@@ -165,6 +168,29 @@ await g(`(() => {
   if (!/torn/.test(last || "")) fail(`no refusal message for healing a torn ally: ${JSON.stringify(last)}`);
 }
 
+step = "20 percent enemy damage";
+await g(`(() => {
+  const b = window.__game.game.battle;
+  const oldRandom = Math.random;
+  Math.random = () => 0.5;
+  try {
+    b.wall = false;
+    const target = { emotion: "neutral", guard: false };
+    window.__damageCheck = [
+      b.dmgTo(target, 100, false).dmg,
+      b.dmgTo(target, 100, true).dmg,
+    ];
+  } finally {
+    Math.random = oldRandom;
+  }
+})()`);
+{
+  const [outgoing, incoming] = await g("window.__damageCheck");
+  if (outgoing !== 115 || incoming !== 138) {
+    fail(`enemy damage multiplier drifted: got ${outgoing}/${incoming}, want 115/138`);
+  }
+}
+
 step = "stranded save repair";
 // a save that already beat the Smoother without Stub (shipped bug) must come
 // back from Continue with Stub folded in by migrateSave
@@ -198,8 +224,93 @@ await key("KeyZ");
   if (stub.maxHp !== 48 || stub.maxInk !== 30) fail(`repaired Stub missing page-3 growth: ${stub.maxHp}HP/${stub.maxInk}ink (want 48/30)`);
 }
 
+step = "lighthouse legacy-save migration";
+// Older completed Bay saves predate bay_lighthouse_lit. Continue must derive it
+// from the completed Keeper flag without changing the v1 save shape.
+await g(`(() => {
+  const mira = { id: "mira", name: "Mira", portrait: "mira", hp: 45, maxHp: 45, ink: 20, maxInk: 20,
+    atk: 10, def: 6, spd: 8, emotion: "neutral", guard: false, skills: ["doodle_dash"] };
+  localStorage.setItem("the-last-page-full-save", JSON.stringify({
+    version: 1, map: "bay_2", x: 10, y: 6, facing: "down",
+    flags: { bay_boss_done: true }, pages: 4, party: [mira],
+    inventory: { page1: 1, page2: 1, page3: 1, page4: 1 }, journal: {}, steps: 0, playMs: 0,
+  }));
+})()`);
+await page.reload();
+await page.waitForFunction("window.__ready === true", null, { timeout: 30000 });
+await page.waitForTimeout(500);
+await g(`window.__game.game.title.index = 0`); // Continue
+await key("KeyZ");
+{
+  const t0 = Date.now();
+  while ((await mode()) !== "map") {
+    if (Date.now() - t0 > 20000) fail("Continue never loaded the completed Bay save");
+    await page.waitForTimeout(150);
+  }
+  if (!(await g("!!window.__game.game.state.flags.bay_lighthouse_lit"))) {
+    fail("completed legacy Bay save did not recover bay_lighthouse_lit");
+  }
+}
+
+step = "lighthouse install and visual";
+// A bulb found before this patch was not yet installed. It must remain usable;
+// the script must consume it, set the new flag before its first dialogue line,
+// and visibly brighten the lantern room.
+await g(`(() => {
+  const mira = { id: "mira", name: "Mira", portrait: "mira", hp: 45, maxHp: 45, ink: 20, maxInk: 20,
+    atk: 10, def: 6, spd: 8, emotion: "neutral", guard: false, skills: ["doodle_dash"] };
+  localStorage.setItem("the-last-page-full-save", JSON.stringify({
+    version: 1, map: "bay_2", x: 10, y: 6, facing: "down",
+    flags: { bay_bulb_found: true }, pages: 3, party: [mira],
+    inventory: { bulb: 1, page1: 1, page2: 1, page3: 1 }, journal: {}, steps: 0, playMs: 0,
+  }));
+})()`);
+await page.reload();
+await page.waitForFunction("window.__ready === true", null, { timeout: 30000 });
+await page.waitForTimeout(500);
+await g(`window.__game.game.title.index = 0`); // Continue
+await key("KeyZ");
+{
+  const t0 = Date.now();
+  while ((await mode()) !== "map") {
+    if (Date.now() - t0 > 20000) fail("Continue never loaded the pre-install Bay save");
+    await page.waitForTimeout(150);
+  }
+  const preinstall = await g(`({ lit: !!window.__game.game.state.flags.bay_lighthouse_lit,
+    bulb: window.__game.game.state.inventory.bulb || 0 })`);
+  if (preinstall.lit || preinstall.bulb !== 1) {
+    fail(`pre-install Bay save changed during migration: ${JSON.stringify(preinstall)}`);
+  }
+}
+await g(`(() => {
+  const game = window.__game.game;
+  game.fade = 1; game.fadeTarget = 1; game.mapScene.bannerT = 0;
+})()`);
+await page.waitForTimeout(150);
+const lighthouseLum = () => g(`(() => {
+  const c = document.querySelector("canvas");
+  const d = c.getContext("2d").getImageData(485, 0, 110, 145).data;
+  let sum = 0;
+  for (let i = 0; i < d.length; i += 4) sum += d[i] * 0.2126 + d[i + 1] * 0.7152 + d[i + 2] * 0.0722;
+  return sum / (d.length / 4);
+})()`);
+const unlitLum = await lighthouseLum();
+await g(`window.__game.game.runScript("s_lighthouse")`);
+await page.waitForTimeout(180);
+{
+  const installed = await g(`({ lit: !!window.__game.game.state.flags.bay_lighthouse_lit,
+    bulb: window.__game.game.state.inventory.bulb || 0 })`);
+  if (!installed.lit || installed.bulb !== 0) {
+    fail(`lighthouse installation state is wrong: ${JSON.stringify(installed)}`);
+  }
+}
+const litLum = await lighthouseLum();
+if (litLum < unlitLum + 4) {
+  fail(`lighthouse did not visibly brighten (${unlitLum.toFixed(1)} -> ${litLum.toFixed(1)})`);
+}
+
 if (errors.length) fail("console errors during run:\n" + errors.join("\n"));
-console.log("REGRESS OK — dunes reachability, Patch, stub fallback join, stranded-save repair, battle messages");
+console.log("REGRESS OK — dunes reachability, Patch, Stub repair, battle messages, combat pressure, lighthouse state/render");
 await browser.close();
 server.close();
 process.exit(0);

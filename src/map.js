@@ -225,6 +225,10 @@ export class MapScene {
       drawText(ctx, `[${st.map}]`, 12, 8, { size: 16, color: d.dark ? "#889" : "#987" });
     }
 
+    if (d.lighthouseLight && st.flags[d.lighthouseLight.flag]) {
+      this.drawLighthouseLight(ctx, d.lighthouseLight);
+    }
+
     // entity sprites
     for (const e of this.entitiesAlive()) {
       if (!e.sprite) continue;
@@ -426,6 +430,61 @@ export class MapScene {
       ctx.textBaseline = "middle";
       ctx.fillText("🕊", cx, cy);
     }
+    ctx.restore();
+  }
+
+  // A painted background cannot show a story change on its own. This warm,
+  // gently sweeping beam is drawn before characters so it feels like part of
+  // Lighthouse Cliff rather than a screen effect pasted over the party.
+  drawLighthouseLight(ctx, light) {
+    const t = performance.now() / 1000;
+    const { x: cx, y: cy } = light;
+    const pulse = (Math.sin(t * 3.1) + 1) / 2;
+
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+
+    // The beam stays over the sea to the west and slowly sweeps along the
+    // horizon. It fades toward the water so the painted shoreline still reads.
+    const angle = Math.PI + Math.sin(t * 0.72) * 0.35;
+    const spread = 0.18;
+    const reach = 610;
+    const ax = cx + Math.cos(angle - spread) * reach;
+    const ay = cy + Math.sin(angle - spread) * reach;
+    const bx = cx + Math.cos(angle + spread) * reach;
+    const by = cy + Math.sin(angle + spread) * reach;
+    const beam = ctx.createLinearGradient(cx, cy, cx + Math.cos(angle) * reach, cy + Math.sin(angle) * reach);
+    beam.addColorStop(0, "rgba(255,244,172,0.30)");
+    beam.addColorStop(0.48, "rgba(255,236,142,0.12)");
+    beam.addColorStop(1, "rgba(255,236,142,0)");
+    ctx.fillStyle = beam;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.closePath();
+    ctx.fill();
+
+    const haloR = 76 + pulse * 10;
+    const halo = ctx.createRadialGradient(cx, cy, 4, cx, cy, haloR);
+    halo.addColorStop(0, "rgba(255,252,212,0.96)");
+    halo.addColorStop(0.12, "rgba(255,234,128,0.78)");
+    halo.addColorStop(0.48, "rgba(255,217,92,0.22)");
+    halo.addColorStop(1, "rgba(255,217,92,0)");
+    ctx.fillStyle = halo;
+    ctx.fillRect(cx - haloR, cy - haloR, haloR * 2, haloR * 2);
+
+    // A compact hot core makes the screwed-in bulb visibly different even on
+    // bright displays or when the sweeping beam is off the player’s view.
+    const core = 9 + pulse * 1.5;
+    const lamp = ctx.createRadialGradient(cx, cy, 0, cx, cy, core);
+    lamp.addColorStop(0, "rgba(255,255,235,1)");
+    lamp.addColorStop(0.48, "rgba(255,242,158,0.95)");
+    lamp.addColorStop(1, "rgba(255,218,92,0)");
+    ctx.fillStyle = lamp;
+    ctx.beginPath();
+    ctx.arc(cx, cy, core, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 

@@ -66,6 +66,12 @@ export function clearSave() {
 // was added to their PARTY_DEFS entry learns it here, in saved order first.
 function migrateSave(s) {
   if (!s.journal) s.journal = {};
+  // Lighthouse Cliff originally narrated the bulb being installed without
+  // storing that state. A completed Keeper fight proves the installation
+  // happened, so old completed Bay saves regain the visual without a version
+  // bump. Do not infer this from bay_bulb_found: that only means the bulb was
+  // picked up and a pre-install save must remain pre-install.
+  if (s.flags.bay_boss_done) s.flags.bay_lighthouse_lit = true;
   // story repair: the Smoother could once be beaten without ever meeting Stub,
   // stranding a save with a story-critical member missing for the rest of the
   // game. Fold him in the way s_dunes_boss now does before the fight — and

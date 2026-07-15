@@ -867,6 +867,10 @@ export const SCRIPTS = {
       n("The lighthouse beam sweeps the felt sea, steady as a heartbeat.\nThe buttons below bob in it like they're dancing."),
     ], else: [
       { t: "if", flag: "bay_bulb_found", is: true, then: [
+        // Set the state before the first line of narration so the lantern is
+        // visibly lit while the player reads that it blazes.
+        { t: "take", item: "bulb" },
+        { t: "flag", key: "bay_lighthouse_lit", value: true },
         n("You climb the spiral of thread to the lantern room and screw in\nthe Bright Bulb. It hums... and BLAZES."),
         { t: "sfx", name: "sfx_emotion" }, { t: "shake", ms: 500 },
         n("Light sweeps the bay - and catches, at the cliff's edge, a stiff figure\nin a navy coat, holding something small and silver."),

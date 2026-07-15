@@ -350,6 +350,9 @@ export const MAPS = {
   },
   bay_2: {
     bg: "bg_bay_2", bgm: "bgm_bay",
+    // The bulb is installed during s_lighthouse.  Keep the visual state in the
+    // map data so the light returns whenever a saved game revisits the cliff.
+    lighthouseLight: { flag: "bay_lighthouse_lit", x: 540, y: 58 },
     grid: [
       "####################",
       "####################",

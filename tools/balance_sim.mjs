@@ -13,6 +13,8 @@ import { SKILLS } from "../src/data/skills.js";
 const ADV = { giggly: "grumpy", grumpy: "gloomy", gloomy: "giggly" };
 const advMult = (a, d) => (ADV[a] === d ? 1.4 : ADV[d] === a ? 0.75 : 1.0);
 const RUNS = 400;
+const DAMAGE_MULT = 1.15; // shared pacing multiplier, applied in both directions
+const ENEMY_DAMAGE_MULT = 1.20; // battle.js: enemy-to-party difficulty increase
 
 // pages = torn pages collected before this fight: each grants +8 maxHp/+4 maxInk
 // (see the "page" command in src/cutscene.js) — the party's only growth
@@ -33,7 +35,7 @@ function mkFoes(troop) {
 }
 
 function dmgTo(t, raw, wall, isParty) {
-  let dmg = raw * 1.15; // global pacing: +15% damage in both directions
+  let dmg = raw * DAMAGE_MULT * (isParty ? ENEMY_DAMAGE_MULT : 1);
   if (t.emotion === "grumpy") dmg *= 1.15;
   if (t.emotion === "gloomy") dmg *= 0.85;
   if (t.guard) dmg *= 0.5;
@@ -75,7 +77,7 @@ function enemyAct(e, party, wall) {
   } else if (act.kind === "bell") {
     for (const t of alive) {
       t.emotion = "gloomy";
-      t.hp = Math.max(0, t.hp - Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * 1.15 * soften)));
+      t.hp = Math.max(0, t.hp - Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * DAMAGE_MULT * ENEMY_DAMAGE_MULT * soften)));
     }
   }
 }
