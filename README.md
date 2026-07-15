@@ -49,8 +49,9 @@ like every other setting, is remembered between sessions.
 
 - **Click** a menu option to choose it directly; clicking with no menu open
   confirms / advances dialogue, like Z.
-- **Right-click** is X — opens or closes the menu, backs out of submenus.
-  The whole game is playable with just the mouse.
+- **Right-click** a spot on a free map to walk there; Mira automatically paths
+  around walls and characters. In menus and other screens it remains X — open
+  or close the menu, or back out of a submenu.
 
 ### Touch (phones & tablets)
 

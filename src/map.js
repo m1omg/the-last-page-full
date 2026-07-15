@@ -8,6 +8,7 @@ import { drawBox, drawText, FONT } from "./ui.js";
 import { runScript } from "./cutscene.js";
 
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+const PATH_DIRS = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 
 export class MapScene {
   constructor(game) {
@@ -20,6 +21,7 @@ export class MapScene {
     this.fleeGraceT = 0; // chase pause after fleeing a battle
     this.bannerT = 0;
     this.stepBlip = 0;
+    this.clickTarget = null; // runtime-only right-click destination; never saved
   }
 
   get def() { return MAPS[this.game.state.map]; }
@@ -38,6 +40,7 @@ export class MapScene {
     this.followPos = [];
     this.enemyRt = {}; // runtime positions for chasing enemies
     this.fleeGraceT = 0;
+    this.clickTarget = null;
     this.bannerT = 2.2;
     this.rescuePlayer();
     if (d.bgm) audio.playBgm(d.bgm);
@@ -106,6 +109,90 @@ export class MapScene {
     return null;
   }
 
+  clearClickTarget() {
+    this.clickTarget = null;
+  }
+
+  // Called with canvas logical coordinates. The path stays entirely on the
+  // scene so it cannot alter the v1 save format or leave a stale route after
+  // a teleport / map change.
+  setClickTarget(px, py) {
+    const x = Math.max(0, Math.min(COLS - 1, Math.floor(px / TILE)));
+    const y = Math.max(0, Math.min(ROWS - 1, Math.floor(py / TILE)));
+    this.clickTarget = { x, y };
+    return true;
+  }
+
+  // BFS from the party, so blocked clicks naturally end at the closest
+  // reachable tile instead of trying to walk through scenery or live enemies.
+  pathToClickTarget() {
+    if (!this.clickTarget) return [];
+    const st = this.game.state;
+    const target = this.clickTarget;
+    const key = (x, y) => `${x},${y}`;
+    const q = [[st.x, st.y]];
+    const prev = new Map([[key(st.x, st.y), null]]);
+    let i = 0;
+    let best = { x: st.x, y: st.y, dist: Math.abs(st.x - target.x) + Math.abs(st.y - target.y) };
+
+    while (i < q.length) {
+      const [x, y] = q[i++];
+      const dist = Math.abs(x - target.x) + Math.abs(y - target.y);
+      if (dist < best.dist) best = { x, y, dist };
+      if (dist === 0) break;
+
+      for (const [dx, dy] of PATH_DIRS) {
+        const nx = x + dx, ny = y + dy;
+        const k = key(nx, ny);
+        if (prev.has(k) || this.solid(nx, ny)) continue;
+        prev.set(k, [x, y]);
+        q.push([nx, ny]);
+      }
+    }
+
+    if (best.x === st.x && best.y === st.y) return [];
+    const path = [];
+    let cur = [best.x, best.y];
+    while (true) {
+      const parent = prev.get(key(cur[0], cur[1]));
+      if (!parent) break;
+      path.unshift(cur);
+      cur = parent;
+    }
+    return path;
+  }
+
+  tryMove(dir) {
+    const g = this.game;
+    const st = g.state;
+    st.facing = dir;
+    const [dx, dy] = DIRS[dir];
+    const nx = st.x + dx, ny = st.y + dy;
+    if (!this.solid(nx, ny)) {
+      this.moving = { fx: st.x, fy: st.y, tx: nx, ty: ny, t: 0 };
+      return true;
+    }
+    // bumping into a solid entity (like a wild doodle) triggers it — except
+    // during the flee grace, when doodles can't engage at all.
+    const e = this.entityAt(nx, ny, "touch");
+    if (e && e.sprite && !(this.fleeGraceT > 0 && e.sprite.startsWith("enemy:"))) {
+      this.clearClickTarget();
+      g.runScript(e.touch);
+    }
+    return false;
+  }
+
+  continueClickMove() {
+    const target = this.clickTarget;
+    const st = this.game.state;
+    if (!target) return;
+    if (st.x === target.x && st.y === target.y) { this.clearClickTarget(); return; }
+    const [nx, ny] = this.pathToClickTarget()[0] || [];
+    if (nx == null) { this.clearClickTarget(); return; }
+    const dir = nx > st.x ? "right" : nx < st.x ? "left" : ny > st.y ? "down" : "up";
+    this.tryMove(dir); // re-path next tile if a moving enemy blocks this one
+  }
+
   updateChase(dt) {
     // just fled a battle: every doodle loses track of the party for a moment,
     // or the still-adjacent one would re-trigger the fight before you can move
@@ -116,7 +203,7 @@ export class MapScene {
       const rt = this.enemyRt[e.id] || (this.enemyRt[e.id] = { x: e.x, y: e.y, cool: Math.random() * 0.3 });
       const dx = st.x - rt.x, dy = st.y - rt.y;
       const dist = Math.abs(dx) + Math.abs(dy);
-      if (dist <= 1) { this.game.runScript(e.touch); return; }
+      if (dist <= 1) { this.clearClickTarget(); this.game.runScript(e.touch); return; }
       if (dist > 5) continue;
       rt.cool -= dt;
       if (rt.cool > 0) continue;
@@ -128,7 +215,7 @@ export class MapScene {
       for (const [sx, sy] of tries) {
         if (!sx && !sy) continue;
         const nx = rt.x + sx, ny = rt.y + sy;
-        if (nx === st.x && ny === st.y) { this.game.runScript(e.touch); return; }
+        if (nx === st.x && ny === st.y) { this.clearClickTarget(); this.game.runScript(e.touch); return; }
         const grid = this.gridNow;
         if (grid[ny]?.[nx] !== ".") continue;
         if (this.entitiesAlive().some((o) => o !== e && o.sprite && this.entPos(o)[0] === nx && this.entPos(o)[1] === ny)) continue;
@@ -148,6 +235,9 @@ export class MapScene {
     if (g.busy()) return; // chase may have started a battle
 
     if (this.moving) {
+      if (input.hit("cancel") || input.hit("confirm") || ["up", "down", "left", "right"].some((dir) => input.held(dir))) {
+        this.clearClickTarget();
+      }
       this.moving.t += dt / 0.17;
       this.walkT += dt;
       if (this.moving.t >= 1) {
@@ -160,14 +250,15 @@ export class MapScene {
         this.stepBlip++;
         if (this.stepBlip % 2 === 0) audio.sfx("sfx_step", 0.5);
         const e = this.entityAt(st.x, st.y, "touch");
-        if (e) { g.runScript(e.touch); return; }
+        if (e) { this.clearClickTarget(); g.runScript(e.touch); return; }
       } else {
         return;
       }
     }
 
-    if (input.hit("cancel")) { g.openMenu(); return; }
+    if (input.hit("cancel")) { this.clearClickTarget(); g.openMenu(); return; }
     if (input.hit("confirm")) {
+      this.clearClickTarget();
       const [dx, dy] = DIRS[st.facing];
       const e = this.entityAt(st.x, st.y, "interact") || this.entityAt(st.x + dx, st.y + dy, "interact");
       if (e) { g.runScript(e.interact); return; }
@@ -175,22 +266,12 @@ export class MapScene {
 
     for (const dir of ["up", "down", "left", "right"]) {
       if (input.held(dir)) {
-        st.facing = dir;
-        const [dx, dy] = DIRS[dir];
-        const nx = st.x + dx, ny = st.y + dy;
-        if (!this.solid(nx, ny)) {
-          this.moving = { fx: st.x, fy: st.y, tx: nx, ty: ny, t: 0 };
-        } else {
-          // bumping into a solid entity (like a wild doodle) triggers it —
-          // except during the flee grace, when doodles can't engage at all
-          const e = this.entityAt(nx, ny, "touch");
-          if (e && e.sprite && !(this.fleeGraceT > 0 && e.sprite.startsWith("enemy:"))) {
-            g.runScript(e.touch);
-          }
-        }
-        break;
+        this.clearClickTarget();
+        this.tryMove(dir);
+        return;
       }
     }
+    this.continueClickMove();
   }
 
   playerPixelPos() {

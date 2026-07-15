@@ -509,18 +509,38 @@ for (const schemeUnderTest of ["gestures", "dpad"]) {
   await page.waitForTimeout(2000);
   ok("clicking 'Continue' loads the save", (await page.evaluate("window.__game.game.mode")) === "map");
 
-  // right-click = X: opens the pocket menu, closes it again
-  p = await toCss(page, 480, 300);
-  await page.mouse.click(p.x, p.y, { button: "right" });
-  await page.waitForTimeout(350);
-  ok("right-click opens the menu", await page.evaluate("window.__game.game.menu.open"));
-  await page.mouse.click(p.x, p.y, { button: "right" });
-  await page.waitForTimeout(350);
-  ok("right-click again closes it", !(await page.evaluate("window.__game.game.menu.open")));
+  // Right-click walks to the requested tile. The guide at (12,8) makes the
+  // route to (14,8) detour, proving this is pathing rather than teleporting.
+  await clickLogical(page, 14 * 48 + 24, 8 * 48 + 24, "right");
+  await page.waitForFunction(`(() => {
+    const s = window.__game.game.state;
+    return s.x === 14 && s.y === 8 && !window.__game.game.mapScene.moving;
+  })()`, null, { timeout: 6000 });
+  const walked = await page.evaluate(`(() => {
+    const s = window.__game.game.state;
+    return { menu: window.__game.game.menu.open, steps: s.steps };
+  })()`);
+  ok("right-click paths to the map position", !walked.menu && walked.steps >= 7, JSON.stringify(walked));
+  await page.evaluate("window.__game.game.saveNow()");
+  const saved = await page.evaluate(`(() => {
+    const s = JSON.parse(localStorage.getItem("the-last-page-full-save"));
+    return { version: s.version, keys: Object.keys(s).sort() };
+  })()`);
+  ok("click movement stays out of v1 saves", saved.version === 1
+     && saved.keys.join(",") === "facing,flags,inventory,journal,map,pages,party,playMs,steps,version,x,y", JSON.stringify(saved));
+
+  // Right-click still works as X while a menu is open, where moving is invalid.
+  await page.keyboard.press("KeyX");
+  await page.waitForTimeout(250);
+  ok("X opens the pocket menu", await page.evaluate("window.__game.game.menu.open"));
+  const menuPos = await pos(page);
+  await clickLogical(page, 480, 300, "right");
+  ok("right-click closes an open menu", !(await page.evaluate("window.__game.game.menu.open"))
+     && menuPos === (await pos(page)));
 
   // click a menu tab, then a row, then outside to close
-  await page.mouse.click(p.x, p.y, { button: "right" });
-  await page.waitForTimeout(350);
+  await page.keyboard.press("KeyX");
+  await page.waitForTimeout(250);
   await clickLogical(page, 632, 100); // Options tab (fourth of four now)
   ok("clicking the Options tab switches to it", (await page.evaluate("window.__game.game.menu.tab")) === 3);
   await clickLogical(page, 430, 188); // Export save row (first option row)

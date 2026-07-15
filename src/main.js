@@ -543,7 +543,10 @@ function frame(now) {
   const unlock = () => audio.unlock();
   window.addEventListener("keydown", unlock, { once: true });
   window.addEventListener("pointerdown", unlock, { once: true });
-  touch.init(canvas);
+  touch.init(canvas, (x, y) => {
+    if (game.mode !== "map" || game.busy()) return false;
+    return game.mapScene.setClickTarget(x, y);
+  });
   textmode.init(); // needs touch.capable to resolve "auto"
   await Promise.all([assets.init(), audio.init(), loadFonts()]);
   game.mode = "title";

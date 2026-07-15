@@ -237,7 +237,7 @@ function applyScheme() {
 
 // ------------------------------------------------------------ api
 export const touch = {
-  init(canvasEl) {
+  init(canvasEl, onSecondaryClick = null) {
     canvas = canvasEl;
     scheme = loadSettings().touch;
     const forced = new URLSearchParams(location.search).has("touch");
@@ -262,12 +262,15 @@ export const touch = {
       if (e.pointerType === "touch" || e.button !== 0) return;
       handleTap(e.clientX, e.clientY);
     });
-    // right-click = X (open/close the menu, back out of submenus). Only real
-    // right-clicks (button 2): some mobile browsers synthesize a contextmenu
-    // from a long-press with button 0, which must not interrupt drag-to-walk.
+    // A real right-click moves on a free map; elsewhere it retains its X
+    // behavior (menu/cancel). Long-press context menus report button 0, so
+    // they must never interrupt drag-to-walk.
     stage.addEventListener("contextmenu", (e) => {
       e.preventDefault();
-      if (e.button === 2) input.tap("cancel");
+      if (e.button !== 2) return;
+      const p = toLogical(e.clientX, e.clientY);
+      if (p && onSecondaryClick?.(p.x, p.y)) return;
+      input.tap("cancel");
     });
     // pointer cursor over anything actually clickable
     stage.addEventListener("mousemove", (e) => {
