@@ -17,6 +17,38 @@ import { Menu } from "./menu.js";
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+// Hi-DPI / large-screen rendering: every scene keeps drawing in 960×720
+// logical px. fitCanvas() letterboxes the canvas into the stage from JS
+// (CSS can't clamp one axis of a sized element without squashing the ratio)
+// and sizes the backing store to the result × devicePixelRatio — so browser
+// zoom re-sharpens too — with a base transform mapping logical → device px.
+// Text, boxes, and the oversized sprite sources all gain real sharpness;
+// input stays logical (touch.js and hotspots map through bounding rects).
+// Backing is capped at 3× so a zoomed 4K canvas can't balloon the 2d raster.
+const stageEl = document.getElementById("stage");
+let scaleX = 1, scaleY = 1;
+function fitCanvas() {
+  const cs = getComputedStyle(stageEl); // tui-bottom pads the stage's bottom
+  const availW = stageEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const availH = stageEl.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  if (availW <= 0 || availH <= 0) return;
+  const fit = Math.min(availW / 960, availH / 720);
+  const cssW = Math.round(960 * fit), cssH = Math.round(720 * fit);
+  if (canvas.clientWidth !== cssW || canvas.clientHeight !== cssH) {
+    canvas.style.width = cssW + "px";
+    canvas.style.height = cssH + "px";
+  }
+  const dpr = window.devicePixelRatio || 1;
+  const s = Math.min(3, Math.max(1, fit * dpr));
+  const w = Math.round(960 * s), h = Math.round(720 * s);
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w; // also resets all context state, incl. the transform
+    canvas.height = h;
+    scaleX = w / 960;
+    scaleY = h / 720;
+  }
+}
+
 const game = {
   state: null,
   mode: "boot", // boot | title | map | battle | cg | credits | gameover
@@ -507,6 +539,8 @@ function frame(now) {
   else if (game.mode === "gameover") updateGameover(dt);
 
   // draw — scenes re-register their tappable rows every frame
+  fitCanvas();
+  ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
   hotspots.clear();
   ctx.save();
   if (game.shakeMsLeft > 0) ctx.translate((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);

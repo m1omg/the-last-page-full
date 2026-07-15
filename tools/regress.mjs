@@ -350,7 +350,8 @@ await g(`(() => {
 await page.waitForTimeout(150);
 const lighthouseLum = () => g(`(() => {
   const c = document.querySelector("canvas");
-  const d = c.getContext("2d").getImageData(485, 0, 110, 145).data;
+  const s = c.width / 960; // backing store is hi-DPI-scaled logical 960×720
+  const d = c.getContext("2d").getImageData(Math.round(485 * s), 0, Math.round(110 * s), Math.round(145 * s)).data;
   let sum = 0;
   for (let i = 0; i < d.length; i += 4) sum += d[i] * 0.2126 + d[i + 1] * 0.7152 + d[i + 2] * 0.0722;
   return sum / (d.length / 4);

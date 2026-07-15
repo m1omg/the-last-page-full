@@ -31,6 +31,10 @@ html, body {
 }
 #game {
   image-rendering: auto;
+  /* fitCanvas() in main.js sets the on-screen size (fill the stage, keep 4:3
+     — CSS alone can't letterbox a sized axis without squashing) and matches
+     the backing store to it × devicePixelRatio, so big screens get a real
+     resolution increase, not a blurry stretch. These are the pre-JS fallback. */
   max-width: 100%;
   max-height: 100%;
   aspect-ratio: 4 / 3;
