@@ -424,7 +424,7 @@ function drawCG() {
 const CREDITS = [
   "THE LAST PAGE - FULL EDITION",
   "",
-  "a game made with love, crayons and code",
+  "a game made with love and code",
   "",
   "story · code · music",
   "Claude (Fable 5)",
