@@ -49,6 +49,7 @@ export class BattleScene {
         lastReach: null,   // the option that landed last — repeats fizzle
         settled: 0,        // calm gains this round (cap 1, or 2 while GIGGLY)
         rallied: false,    // boss second wind, triggered below half HP
+        surged: 0,         // boss storm surges fired (half hearts; last heart)
         wobble: 0,
       };
     });
@@ -477,6 +478,20 @@ export class BattleScene {
         e.lastReach = null;
         this.addFloater(e, e.storm.toUpperCase(), EMOTION_COLOR[e.storm]);
         this.queueMsg(`The heart lands... and a DIFFERENT feeling boils up where it landed. ${e.name} storms ${e.storm.toUpperCase()} - break through again!`);
+      } else if (e.def.boss && e.calm < e.def.calmNeed &&
+          ((e.surged === 0 && e.calm >= Math.ceil(e.def.calmNeed / 2)) ||
+           (e.surged === 1 && e.def.calmNeed >= 6 && e.calm === e.def.calmNeed - 1))) {
+        // the surge: at half hearts — and again on the last heart for the big
+        // bosses — the storm rears back up. Storm gates the Warm Ribbon's
+        // opening calm can't skip, so charmed runs keep real mid-fight beats
+        // (the rotate boss re-storms every heart anyway, see above).
+        e.surged++;
+        e.emotion = e.storm;
+        e.lastReach = null;
+        this.addFloater(e, e.storm.toUpperCase(), EMOTION_COLOR[e.storm]);
+        this.queueMsg(e.calm === e.def.calmNeed - 1
+          ? `${e.name} is one heart from okay - and the ${e.storm.toUpperCase()} knows it. One last squall, loudest of all. The last heart is the heaviest.`
+          : `${e.name} shudders - and the ${e.storm.toUpperCase()} SURGES back, louder than ever. The feeling fights hardest right before it lets go. Break through one more time!`);
       } else if (e.emotion === "giggly" && e.settled === 1 && e.calm < e.def.calmNeed) {
         this.queueMsg(`${e.name} is giggling too much to be sad - it could take one more kind thing this round!`);
       }

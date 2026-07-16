@@ -187,16 +187,24 @@ export class Menu {
       if (!list.length) {
         drawText(ctx, "Your pockets are empty. (Sad crumb noise.)", 480, 300, { size: 20, align: "center", color: "#8a7a68" });
       }
+      // scrolling window: late-game pockets outgrow the panel, so only
+      // PKT_ROWS rows show at once and the window follows the cursor
+      const PKT_ROWS = 10;
+      const top = Math.max(0, Math.min(this.index - (PKT_ROWS - 1), list.length - PKT_ROWS));
+      const visible = list.slice(top, top + PKT_ROWS);
       if (!this.sub) {
-        hotspots.rows(140, 152, 400, 40, list.length, (i) => { this.index = i; input.tap("confirm"); });
+        hotspots.rows(140, 152, 400, 40, visible.length, (i) => { this.index = top + i; input.tap("confirm"); });
       }
-      list.forEach((id, i) => {
+      visible.forEach((id, vi) => {
+        const i = top + vi;
         const item = ITEMS[id];
         const sel = i === this.index;
-        if (sel) drawText(ctx, "☞", 140, 160 + i * 40, { size: 20, color: "#b8452e" });
-        drawText(ctx, `${item.name}${item.key ? "  ◆" : `  ×${st.inventory[id]}`}`, 175, 160 + i * 40,
+        if (sel) drawText(ctx, "☞", 140, 160 + vi * 40, { size: 20, color: "#b8452e" });
+        drawText(ctx, `${item.name}${item.key ? "  ◆" : `  ×${st.inventory[id]}`}`, 175, 160 + vi * 40,
           { size: 20, bold: sel, color: item.key ? "#7a5a8a" : "#2a2320" });
       });
+      if (top > 0) drawText(ctx, "▲", 480, 138, { size: 16, align: "center", color: "#8a7a68" });
+      if (top + PKT_ROWS < list.length) drawText(ctx, "▼", 480, 556, { size: 16, align: "center", color: "#8a7a68" });
       const cur = list[this.index];
       if (cur) drawText(ctx, ITEMS[cur].desc, 140, 590, { size: 18, color: "#5a4634" });
       if (this.sub) {
@@ -228,9 +236,10 @@ export class Menu {
       const entries = journalEntries(st);
       const done = entries.filter((e) => e.status === "friend").length;
       drawText(ctx, `Friends made: ${done}/${entries.length}`, 140, 140, { size: 19, bold: true, color: "#7a4a2a" });
+      // 8 rows per column: all 15 befriendable doodles fit two columns
       entries.forEach((e, i) => {
-        const col = i < 7 ? 0 : 1;
-        const ey = 180 + (i % 7) * 58;
+        const col = i < 8 ? 0 : 1;
+        const ey = 180 + (i % 8) * 52;
         const ex = 140 + col * 360;
         drawText(ctx, e.status === "unknown" ? "?????" : e.name, ex, ey, {
           size: 19, bold: e.status === "friend",
@@ -285,4 +294,5 @@ const FLAVOR = {
   mira: "Keeper of the sketchbook. Braver than she believes.",
   biscuit: "Knight of the Round Plate. 34% icing, 100% loyal.",
   wisp: "A small light that stayed on. That counts for everything.",
+  stub: "Ren's sun crayon. Worn down, not worn out. Everybody gets a sun.",
 };

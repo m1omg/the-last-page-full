@@ -39,8 +39,8 @@ There is no separate lint or unit-test runner; `validate.mjs` + the smoke script
 
 - **Save backward-compatibility is sacred.** Saves stay `version: 1`; forward-compat is handled by extending `migrateSave` in `src/state.js`, never by version bumps. Any change touching state shape must be checked against an old save loaded through the real `loadGame` path.
 - **Kindness is a mechanic.** Every enemy, including every boss, must remain resolvable without violence (the Reach Out system). Don't add an encounter that breaks this.
-- **Balance changes go through the simulator first.** `tools/balance_sim.mjs` mirrors the real battle formulas over the real data files. Target bands: regular enemies 2–4 rounds, first boss ~5, later bosses 6–8, superboss ~11 on the peace route.
-- Battle mechanics that interlock (see DEVLOG §7 before touching `battle.js`): the emotion triangle (GIGGLY > GRUMPY > GLOOMY > GIGGLY), the storm gate (a distressed doodle can't hear you until the storm breaks), one heart per enemy per round, calm-softening, boss second wind, and the cheer gamble.
+- **Balance changes go through the simulator first.** `tools/balance_sim.mjs` mirrors the real battle formulas over the real data files, including the charms (see its `--- with charms ---` rows). Target bands on the peace route: regular enemies 2–4 rounds, first boss ~5, later bosses 6–8 *with the route's charms* (a charmless run trends ~2 higher), superboss ~10 charmed / ~14 charmless.
+- Battle mechanics that interlock (see DEVLOG §7 before touching `battle.js`): the emotion triangle (GIGGLY > GRUMPY > GLOOMY > GIGGLY), the storm gate (a distressed doodle can't hear you until the storm breaks), one heart per enemy per round, calm-softening, boss second wind, the boss storm surge (bosses re-storm at half hearts, and big bosses again on the last heart — the anti-charm-snowball beat), and the cheer gamble.
 - Don't `pgrep -f`/`pkill -f` the smoke scripts — the pattern matches the invoking shell itself. Use the `grep '[s]moke'` bracket trick or background-job tracking.
 
 ## Docs

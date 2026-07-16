@@ -20,11 +20,12 @@ const REGULAR_ATTACK_WEIGHT = 2; // battle.js: non-boss attack selection weight
 
 // pages = torn pages collected before this fight: each grants +8 maxHp/+4 maxInk
 // (see the "page" command in src/cutscene.js) — the party's only growth
-function mkParty(ids, pages = 0) {
+function mkParty(ids, pages = 0, charms = {}) {
   return ids.map((id) => {
     const d = structuredClone(PARTY_DEFS[id]);
     const hp = d.hp + pages * 8, ink = d.ink + pages * 4;
-    return { id, ...d, hp, ink, maxHp: hp, maxInk: ink, emotion: "neutral", guard: false };
+    return { id, ...d, hp, ink, maxHp: hp, maxInk: ink, emotion: "neutral", guard: false,
+             charm: charms[id] || null };
   });
 }
 function mkFoes(troop) {
@@ -32,7 +33,7 @@ function mkFoes(troop) {
     const d = ENEMIES[id];
     return { id, def: d, hp: d.hp, maxHp: d.hp, atk: d.atk, defs: d.def, spd: d.spd,
              emotion: d.emotion || "neutral", storm: d.emotion || "neutral",
-             calm: 0, lastReach: null, settled: 0, rallied: false, guard: false, soothed: false };
+             calm: 0, lastReach: null, settled: 0, rallied: false, surged: 0, guard: false, soothed: false };
   });
 }
 
@@ -44,8 +45,9 @@ function dmgTo(t, raw, wall, isParty, sourceEnemy = null) {
   let dmg = raw * DAMAGE_MULT * (isParty ? enemyDamageMult(sourceEnemy) : 1);
   if (t.emotion === "grumpy") dmg *= 1.15;
   if (t.emotion === "gloomy") dmg *= 0.85;
-  if (t.guard) dmg *= 0.5;
-  if (wall && isParty) dmg *= 0.5;
+  const guardMult = t.charm === "charm_locket" ? 0.35 : 0.5; // battle.js: Crumb Locket
+  if (t.guard) dmg *= guardMult;
+  if (wall && isParty) dmg *= guardMult;
   dmg = Math.max(1, Math.round(dmg * (0.85 + Math.random() * 0.3)));
   if (t.emotion === "giggly" && Math.random() < 0.12) return 0;
   return dmg;
@@ -53,7 +55,7 @@ function dmgTo(t, raw, wall, isParty, sourceEnemy = null) {
 
 function playerHit(a, t, mult) {
   if (t.def.immune) return 0;
-  let raw = a.atk * mult;
+  let raw = (a.atk + (a.charm === "charm_sunbadge" ? 3 : 0)) * mult;
   if (a.emotion === "grumpy") raw *= 1.2;
   raw *= advMult(a.emotion, t.emotion);
   raw -= t.defs * 0.55;
@@ -101,11 +103,12 @@ function enemyAct(e, party, wall) {
   }
 }
 
-function reach(e, o) {
+function reach(e, o, actor) {
   if (!o.good) { e.calm = Math.max(0, e.calm - 1); if (e.emotion !== "giggly") e.emotion = e.storm; e.lastReach = null; return; }
   if (o.label === e.lastReach && e.emotion !== "giggly") return; // giggly takes an encore
   if (e.emotion === e.storm) { e.emotion = "neutral"; e.lastReach = o.label; return; }
-  if (e.settled >= (e.emotion === "giggly" ? 2 : 1)) return;
+  // battle.js: Rainy-Day Stamp raises the settle cap for its wearer's reaches
+  if (e.settled >= (e.emotion === "giggly" ? 2 : 1) + (actor && actor.charm === "charm_stamp" ? 1 : 0)) return;
   e.calm++; e.settled++; e.lastReach = o.label;
   if (e.calm >= e.def.calmNeed) { e.soothed = true; return; }
   if (e.def.rotate) {
@@ -113,13 +116,24 @@ function reach(e, o) {
     e.storm = cycle[(cycle.indexOf(e.storm) + 1) % cycle.length];
     e.emotion = e.storm;
     e.lastReach = null;
+  } else if (e.def.boss &&
+      ((e.surged === 0 && e.calm >= Math.ceil(e.def.calmNeed / 2)) ||
+       (e.surged === 1 && e.def.calmNeed >= 6 && e.calm === e.def.calmNeed - 1))) {
+    // battle.js: the surge — half hearts, and the last heart on big bosses
+    e.surged++;
+    e.emotion = e.storm;
+    e.lastReach = null;
   }
 }
 
 // one battle; policy = "peace" | "fight". Returns { rounds, survived, partyHpLeft }
-function sim(partyIds, troop, policy, pages) {
-  const party = mkParty(partyIds, pages);
+function sim(partyIds, troop, policy, pages, charms = {}) {
+  const party = mkParty(partyIds, pages, charms);
   const foes = mkFoes(troop);
+  // battle.js: Warm Ribbon — every doodle starts already listening
+  if (party.some((m) => m.charm === "charm_ribbon")) {
+    for (const f of foes) if (f.def.calmNeed && !f.def.reachStory) f.emotion = "neutral";
+  }
   const aliveFoes = () => foes.filter((f) => f.hp > 0 && !f.soothed);
   let wall = false;
 
@@ -174,7 +188,7 @@ function sim(partyIds, troop, policy, pages) {
       } else if (a.t === "shift") {
         if (a.m.ink >= a.sk.ink && a.tgt.hp > 0 && !a.tgt.soothed) { a.m.ink -= a.sk.ink; a.tgt.emotion = a.sk.emotion; }
       } else if (a.t === "reach") {
-        if (a.tgt.hp > 0 && !a.tgt.soothed && a.o) reach(a.tgt, a.o);
+        if (a.tgt.hp > 0 && !a.tgt.soothed && a.o) reach(a.tgt, a.o, a.m);
       } else if (a.t === "heal") {
         if (a.m.ink >= 5) { a.m.ink -= 5; a.tgt.hp = Math.min(a.tgt.maxHp, a.tgt.hp + 25); }
       } else if (a.t === "snack") {
@@ -191,12 +205,13 @@ function sim(partyIds, troop, policy, pages) {
   return { rounds: 40, survived: party.some((p) => p.hp > 0) };
 }
 
-function report(label, partyIds, troop, pages = 0) {
+function report(label, partyIds, troop, pages = 0, charms = null) {
   for (const policy of ["fight", "peace"]) {
     if (policy === "fight" && ENEMIES[TROOPS[troop][0]].immune) continue;
+    if (policy === "fight" && charms) continue; // charm rows: peace pacing is the question
     const rs = [], deaths = { n: 0 };
     for (let i = 0; i < RUNS; i++) {
-      const r = sim(partyIds, troop, policy, pages);
+      const r = sim(partyIds, troop, policy, pages, charms || {});
       rs.push(r.rounds);
       if (!r.survived) deaths.n++;
     }
@@ -224,3 +239,15 @@ report("works pair (quartet)", ["mira", "biscuit", "wisp", "stub"], "t_works_pai
 report("ORACLE (quartet)", ["mira", "biscuit", "wisp", "stub"], "t_boss_oracle", 4);
 report("depths inklet pair (4)", ["mira", "biscuit", "wisp", "stub"], "t_inklet_pair", 5);
 report("EMBER superboss (4, 6pg)", ["mira", "biscuit", "wisp", "stub"], "t_boss_unfinished", 6);
+
+// charmed peace runs — ribbon from the dunes bench, stamp from Patch, locket
+// from the works conveyor. This is the loadout a thorough player brings.
+const RS  = { mira: "charm_stamp", wisp: "charm_ribbon" };
+const RSL = { mira: "charm_stamp", wisp: "charm_ribbon", biscuit: "charm_locket" };
+console.log("--- with charms (peace route) ---");
+report("SMOOTHER +ribbon/stamp", ["mira", "biscuit", "wisp", "stub"], "t_boss_smoother", 2, RS);
+report("KEEPER +ribbon/stamp", ["mira", "biscuit", "wisp", "stub"], "t_boss_keeper", 3, RS);
+report("works pair +charms", ["mira", "biscuit", "wisp", "stub"], "t_works_pair", 4, RSL);
+report("ORACLE +charms", ["mira", "biscuit", "wisp", "stub"], "t_boss_oracle", 4, RSL);
+report("depths inklets +charms", ["mira", "biscuit", "wisp", "stub"], "t_inklet_pair", 5, RSL);
+report("EMBER +charms (6pg)", ["mira", "biscuit", "wisp", "stub"], "t_boss_unfinished", 6, RSL);

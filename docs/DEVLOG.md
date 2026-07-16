@@ -179,6 +179,17 @@ The pacifist route is a real puzzle, not a mercy button.
   a foe literally makes the fight safer.
 - **Boss second wind** — a boss below half HP acts twice per round, announced
   once, so the back half of a boss fight has real teeth.
+- **The storm surge** (added when the charms trivialized the late game) — the
+  second wind is HP-gated, so a pure peace run never saw it and a party with
+  the Warm Ribbon + Rainy-Day Stamp landed two hearts a round from round one.
+  Now every boss's storm surges back once at half hearts, and bosses needing
+  6+ hearts surge again on the *last* heart ("the last heart is the heaviest").
+  Storm gates can't be skipped by the ribbon (which only pre-breaks the opening
+  storm), so charmed runs keep real mid-fight beats without any charm being
+  weakened. The rotate superboss is exempt — re-storming is already its gimmick.
+  Late-game stats came up alongside (Oracle 9 hearts / atk 21, Ember 13 hearts /
+  atk 28, works & depths regulars hit harder), tuned via the simulator's new
+  charm-modeled rows.
 - **The cheer gamble** (added this session) — cheering an enemy GIGGLY lets it
   take *two* hearts a round, roughly halving the talk-down. The catch: a giggly
   doodle dodges and swings 15% harder, and a *failed* reach doesn't re-storm it —

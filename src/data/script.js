@@ -287,6 +287,9 @@ export const SCRIPTS = {
       mira("neutral", "...Ready?"),
       say("biscuit", "Born ready. Baked ready, technically."),
       say("wisp", "I-I'll light the way. That's the one thing I know how to do."),
+      { t: "if", flag: "stub_joined", is: true, then: [
+        say("stub", "and if it's dark ALL the way down, good. dark is just paper\nthat hasn't met me yet."),
+      ], else: [] },
       { t: "fade", ms: 900 }, { t: "sfx", name: "sfx_static" },
       { t: "tp", map: "depths_1", x: 9, y: 12, facing: "up" }, { t: "unfade", ms: 900 },
     ] },

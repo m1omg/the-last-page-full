@@ -86,7 +86,7 @@ export const ENEMIES = {
   },
   inklet: {
     name: "Inklet", img: "en_inklet",
-    hp: 53, atk: 15, def: 4, spd: 8, emotion: "gloomy",
+    hp: 62, atk: 18, def: 4, spd: 8, emotion: "gloomy",
     intro: "A little blob of the Smudge... but it's reaching up at you. It just wants to be held.",
     acts: [
       { kind: "attack", mult: 1.0, msg: "{e} splashes cold ink on you!" },
@@ -147,7 +147,7 @@ export const ENEMIES = {
   // ------------------------------------------------- If-Then Works (bargaining)
   ticktick: {
     name: "Tick-Tick", img: "en_ticktick",
-    hp: 66, atk: 17, def: 6, spd: 14, emotion: "grumpy",
+    hp: 66, atk: 19, def: 6, spd: 14, emotion: "grumpy",
     intro: "Tick-Tick vibrates with terrible urgency. It is late for something that already happened.",
     acts: [
       { kind: "attack", mult: 1.2, msg: "{e} rings both bell-ears right in your face!" },
@@ -166,7 +166,7 @@ export const ENEMIES = {
   },
   redo: {
     name: "Redo Mouse", img: "en_redo",
-    hp: 72, atk: 16, def: 12, spd: 8, emotion: "gloomy",
+    hp: 72, atk: 18, def: 12, spd: 8, emotion: "gloomy",
     intro: "Redo Mouse pushes its little cart around the same dotted circle, wearing the path into a groove.",
     acts: [
       { kind: "attack", mult: 1.1, msg: "{e} runs you over with the eraser cart!" },
@@ -276,7 +276,7 @@ export const ENEMIES = {
   },
   oracle: {
     name: "THE WIND-UP ORACLE", img: "boss_oracle", boss: true,
-    hp: 160, atk: 19, def: 7, spd: 9, emotion: "gloomy",
+    hp: 160, atk: 21, def: 7, spd: 9, emotion: "gloomy",
     intro: "The Wind-Up Oracle's key turns slowly, slowly. \"WELCOME BACK,\" it says, though you have never been here. \"EVERYONE COMES BACK. REWIND?\"",
     acts: [
       { kind: "attack", mult: 1.2, msg: "{e} snaps its tin fingers - the moment replays, and the flinch hits you fresh!" },
@@ -284,7 +284,7 @@ export const ENEMIES = {
       { kind: "emotion", target: "player", emotion: "gloomy", msg: "{e} offers the hourglass where the sand falls up. \"ONE MORE IF. ON THE HOUSE.\"" },
       { kind: "defend", msg: "{e} winds its own key tight and waits. Patience is its whole body." },
     ],
-    calmNeed: 7,
+    calmNeed: 9,
     reach: [
       { label: "\"No trade.\"", good: true, text: "The Oracle's smile doesn't move, but the key stutters. Nobody has ever said no before." },
       { label: "Watch the play to the END", good: true, text: "You make yourself watch the whole moment - past the freeze, to the after. The Oracle watches YOU instead. It has never seen the after." },
@@ -298,7 +298,7 @@ export const ENEMIES = {
   },
   unfinished: {
     name: "THE UNFINISHED ONE", img: "boss_unfinished", boss: true,
-    hp: 330, atk: 25, def: 10, spd: 10, emotion: "grumpy", rotate: true, calmNeed: 10,
+    hp: 330, atk: 28, def: 10, spd: 10, emotion: "grumpy", rotate: true, calmNeed: 13,
     intro: "Something enormous uncurls: half of it magnificent, half of it construction lines. The finished eye fixes on you. \"YOU STOPPED,\" it says. \"YOU NEVER EVEN NAMED ME.\"",
     acts: [
       { kind: "attack", mult: 1.3, msg: "{e} strikes with the finished claw - beautiful and precise!" },
