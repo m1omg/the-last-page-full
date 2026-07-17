@@ -149,7 +149,18 @@ for (const f of files) {
   if (isSprite && !f.endsWith(".png")) err(`sprite not png: ${f}`);
   if (!isSprite && !f.endsWith(".jpg")) err(`opaque art not jpg: ${f}`);
 }
-const auds = new Set(readdirSync(join(root, "assets/audio")).map((f) => f.replace(".wav", "")));
+const audFiles = readdirSync(join(root, "assets/audio"));
+const auds = new Set(audFiles.filter((f) => f.endsWith(".wav")).map((f) => f.replace(".wav", "")));
+// every WAV ships with a FLAC twin (the browser loads FLAC first, ~4x
+// smaller; see src/audio.js) — and the twin must not be stale
+for (const w of audFiles.filter((f) => f.endsWith(".wav"))) {
+  const fl = w.replace(".wav", ".flac");
+  if (!audFiles.includes(fl)) { err(`missing FLAC twin: ${fl} (run tools/encode_flac.sh)`); continue; }
+  const { statSync } = await import("node:fs");
+  if (statSync(join(root, "assets/audio", w)).mtimeMs > statSync(join(root, "assets/audio", fl)).mtimeMs) {
+    err(`stale FLAC twin: ${fl} older than its WAV (run tools/encode_flac.sh)`);
+  }
+}
 const wantImgs = new Set();
 for (const d of Object.values(MAPS)) {
   wantImgs.add(d.bg);

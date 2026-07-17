@@ -452,3 +452,31 @@ with strong enough attacks, late game everyone barely takes damage."
   freed tiles opened (open-only, save-safe), and the *untouched* original
   painting now shows full-screen as a `cg_room_314` establishing shot on
   arrival ("Room 314."), so the beloved oversized-Ren art survives as a CG.
+
+## 15. The load-time patch (2026-07-17)
+
+"Load time is a bit too long" — it was: boot blocked on the entire 45MB
+(28MB WAV + 17MB art) before the title even appeared. Two fixes, zero
+quality compromise:
+
+- **Staged loading.** The title now blocks only on what it shows (~1.6MB:
+  its art, its theme, every SFX, the font). Everything else streams behind
+  it, and New Game / Continue *awaits* the stream (`game.preload`) — so
+  nothing in-game can ever pop in late or play against missing art. The
+  title shows "inking the pages… N%" while the stream runs; if the player
+  outruns it, the same line draws over the entry fade instead of an
+  unexplained black wait. Remaining BGM loads one at a time in story order
+  behind the entry gate, and `audio.playBgm` remembers the last request
+  (`wanted`) so a track that lands late starts the moment it arrives.
+- **FLAC twins.** Every WAV ships next to a FLAC (bit-exact — verified
+  sample-for-sample at encode time; 28MB → 6.8MB). `audio.js` fetches the
+  FLAC and falls back to the WAV if the decoder refuses, so no browser
+  loses audio. `tools/encode_flac.sh` re-bakes them after `make_audio.py`;
+  `validate.mjs` fails on a missing or stale twin. PNGs re-crunched
+  losslessly too (pixel-verified) — they were already tight, ~1%.
+
+Measured at 12 Mbps with 40ms RTT (Playwright + CDP throttling): title in
+~1.5s (was: ~30s+ of black), instant-New-Game worst case ~10s with visible
+progress, `bgm_real` playing on arrival, zero WAV fallbacks, zero console
+errors. The smoke drivers now poll for map mode on entry instead of
+sleeping a fixed 1.6s, since entry legitimately waits for the stream.

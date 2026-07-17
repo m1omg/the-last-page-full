@@ -98,7 +98,9 @@ await page.goto(`http://localhost:${port}/?debug`);
 await page.waitForFunction("window.__ready === true", null, { timeout: 30000 });
 await page.waitForTimeout(500);
 await key("KeyZ"); // New Game
-await page.waitForTimeout(1700);
+// entry awaits the background asset stream (staged loading) — poll, don't sleep
+await page.waitForFunction("window.__game.game.mode === 'map'", null, { timeout: 30000 });
+await page.waitForTimeout(300);
 await driveDialogue();
 
 step = "stub fallback join at the boss";

@@ -27,9 +27,14 @@ const MANIFEST = [
   ...PNG.map((n) => [n, "png"]),
 ];
 
+// the title screen needs only its own art; everything else loads behind it
+// while the player sits on the title (game entry awaits loadRest)
+const CRITICAL = new Set(["cg_title"]);
+
 function loadOne(name, ext) {
   return new Promise((resolve) => {
     const img = new Image();
+    img.decoding = "async";
     img.onload = () => { images.set(name, img); resolve(true); };
     img.onerror = () => { resolve(false); };
     img.src = `assets/img/${name}.${ext}`;
@@ -38,10 +43,23 @@ function loadOne(name, ext) {
 
 export const assets = {
   missing: [],
-  async init() {
-    const results = await Promise.all(MANIFEST.map(async ([n, ext]) => [n, await loadOne(n, ext)]));
-    this.missing = results.filter(([, ok]) => !ok).map(([n]) => n);
-    if (this.missing.length) console.warn("missing images:", this.missing.join(", "));
+  done: 0, total: MANIFEST.length, // load progress, shown on the title screen
+  async _load(list) {
+    const results = await Promise.all(list.map(async ([n, ext]) => {
+      const ok = await loadOne(n, ext);
+      this.done++;
+      return [n, ok];
+    }));
+    const missing = results.filter(([, ok]) => !ok).map(([n]) => n);
+    if (missing.length) { this.missing.push(...missing); console.warn("missing images:", missing.join(", ")); }
+  },
+  async init() { // blocking before the title: just the title's art
+    await this._load(MANIFEST.filter(([n]) => CRITICAL.has(n)));
+  },
+  _rest: null,
+  loadRest() { // idempotent; started behind the title, awaited on game entry
+    if (!this._rest) this._rest = this._load(MANIFEST.filter(([n]) => !CRITICAL.has(n)));
+    return this._rest;
   },
   img(name) { return images.get(name) || null; },
   has(name) { return images.has(name); },

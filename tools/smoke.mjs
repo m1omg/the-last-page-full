@@ -179,7 +179,8 @@ await page.waitForTimeout(600);
 if (process.env.SMOKE_ENDING === "page") {
   step = "dream ending (fast path)";
   await key("KeyZ");
-  await page.waitForTimeout(1600);
+  // entry awaits the background asset stream (staged loading) — poll, don't sleep
+  await page.waitForFunction("window.__game.game.mode === 'map'", null, { timeout: 30000 });
   await waitIdle(25000);
   await g(`(() => {
     const s = window.__game.game.state;
@@ -240,8 +241,9 @@ if ((await mode()) !== "title") fail("not on title");
 step = "new game";
 await key("KeyZ"); // possibly Continue/New Game — pick last option = New Game
 const hasSave = await g("!!localStorage.getItem('the-last-page-full-save')");
-await page.waitForTimeout(1600);
-if ((await mode()) !== "map") fail("did not enter map");
+// entry awaits the background asset stream (staged loading) — poll, don't sleep
+await page.waitForFunction("window.__game.game.mode === 'map'", null, { timeout: 30000 })
+  .catch(async () => fail("did not enter map"));
 await waitIdle();
 await shot("02_bedroom");
 

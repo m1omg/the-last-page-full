@@ -63,6 +63,8 @@ const game = {
   cutsceneDepth: 0,
   abortCutscenes: false,
   debug: new URLSearchParams(location.search).has("debug"),
+  preload: null, // background asset stream; game entry awaits it
+  entering: false, // between title fade-out and map entry — show load progress
   title: { index: 0, t: 0 },
   credits: null,
   gameoverIndex: 0,
@@ -178,6 +180,9 @@ const game = {
 
   async newGame() {
     await this.fadeOut(700);
+    this.entering = true; // draws load progress over the black
+    await this.preload; // all art + the intro's tracks — no compromise past here
+    this.entering = false;
     this.state = newGameState();
     window.__game.state = this.state;
     this.mode = "map";
@@ -194,6 +199,9 @@ const game = {
     // against the freshly loaded state and save the corruption. Kill it first.
     this.abortCutscenes = true;
     await this.fadeOut(700);
+    this.entering = true; // draws load progress over the black
+    await this.preload; // all art + the intro's tracks — no compromise past here
+    this.entering = false;
     this.state = s;
     window.__game.state = this.state;
     this.mode = "map"; // lets gameOver()'s waiter resolve, unwinding the script
@@ -355,6 +363,15 @@ function drawTitle() {
   ctx.strokeText("Z / Enter or click — choose · arrows — move · M — sound", 480, 690);
   ctx.fillStyle = "#e8d8ba";
   ctx.fillText("Z / Enter or click — choose · arrows — move · M — sound", 480, 690);
+  // the rest of the sketchbook streams in behind the title; entry waits on it
+  const done = assets.done + audio.done, total = assets.total + audio.total;
+  if (total > 0 && done < total) {
+    ctx.textAlign = "right";
+    ctx.font = `15px ${FONT}`;
+    ctx.strokeText(`inking the pages… ${Math.floor(done / total * 100)}%`, 946, 14);
+    ctx.fillStyle = "#e8d8ba";
+    ctx.fillText(`inking the pages… ${Math.floor(done / total * 100)}%`, 946, 14);
+  }
   ctx.restore();
 }
 
@@ -567,6 +584,13 @@ function frame(now) {
     ctx.fillStyle = `rgba(10,8,6,${1 - game.fade})`;
     ctx.fillRect(0, 0, 960, 720);
   }
+  if (game.entering) {
+    // a slow line still finishing the background stream after New Game /
+    // Continue: show progress over the black instead of an unexplained wait
+    const done = assets.done + audio.done, total = assets.total + audio.total;
+    drawText(ctx, `inking the pages… ${total ? Math.floor(done / total * 100) : 0}%`,
+      480, 350, { size: 22, align: "center", color: "#d8c8b0" });
+  }
 
   input.flush();
   requestAnimationFrame(frame);
@@ -582,7 +606,11 @@ function frame(now) {
     return game.mapScene.setClickTarget(x, y);
   });
   textmode.init(); // needs touch.capable to resolve "auto"
+  // block only on what the title screen itself needs (~3MB: its art, its
+  // theme, every SFX, the font); the other ~40MB stream in behind it
   await Promise.all([assets.init(), audio.init(), loadFonts()]);
+  game.preload = Promise.all([assets.loadRest(), audio.loadGate()]);
+  game.preload.then(() => audio.loadLater()); // remaining BGM, story order
   game.mode = "title";
   game.fade = 0;
   game.fadeTarget = 1;

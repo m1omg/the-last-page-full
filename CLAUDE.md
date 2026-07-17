@@ -18,6 +18,7 @@ node tools/touch_smoke.mjs               # touch + mouse input matrix (real mult
 node tools/balance_sim.mjs               # Monte-Carlo battle pacing report
 node tools/collision_audit.mjs && python3 tools/collision_audit.py  # art vs collision overlays
 python3 tools/make_audio.py              # (re)synthesize all BGM/SFX (pure Python, no deps)
+bash tools/encode_flac.sh                # re-bake the FLAC twins after make_audio (validate checks freshness)
 python3 tools/post_images.py             # (re)bake images from tools/_raw
 ```
 

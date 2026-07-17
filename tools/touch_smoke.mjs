@@ -349,7 +349,8 @@ for (const schemeUnderTest of ["gestures", "dpad"]) {
 
   // and tapping "New Game" starts the game, no swiping at all
   await tapLogical(page, cdp, 500, ROW(1));
-  await page.waitForTimeout(2500);
+  // entry awaits the background asset stream (staged loading) — poll, don't sleep
+  await page.waitForFunction("window.__game.game.mode === 'map'", null, { timeout: 30000 }).catch(() => {});
   ok("tapping 'New Game' starts the game", (await page.evaluate("window.__game.game.mode")) === "map");
 
   ok("no console errors", page.__errs.length === 0, page.__errs[0] || "");
