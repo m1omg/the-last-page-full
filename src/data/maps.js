@@ -83,8 +83,10 @@ export const MAPS = {
   real_street: {
     bg: "bg_real_street", bgm: null, dark: true, noFollowers: true,
     grid: [
-      "########....########",
-      "########....########",
+      // rows 0-1 are the hospital facade in the art — walkable stops at the
+      // doorstep band (row 2), where the entrance trigger sits
+      "####################",
+      "####################",
       "########....########",
       "########....########",
       "########....########",
@@ -100,7 +102,7 @@ export const MAPS = {
       "####################",
     ],
     entities: [
-      { id: "hospital", x: 8, y: 0, w: 4, h: 1, touch: "s_enter_hospital" },
+      { id: "hospital", x: 8, y: 2, w: 4, h: 1, touch: "s_enter_hospital" },
       { id: "busstop", x: 2, y: 9, w: 3, h: 3, interact: "s_busstop" },
       { id: "light", x: 13, y: 7, w: 1, h: 3, interact: "s_traffic_light" },
       { id: "crossing", x: 9, y: 6, w: 3, h: 4, interact: "s_crossing" },
@@ -112,12 +114,12 @@ export const MAPS = {
     grid: [
       "####################",
       "####################",
-      "###############....#",
-      "###############....#",
-      "###############....#",
-      "######.########....#",
-      "######.######......#",
-      "#......######......#",
+      "############.##....#",
+      "############.##....#",
+      "#######.####.##....#",
+      "######..####.##....#",
+      "######.............#",
+      "#..................#",
       "#..................#",
       "#..................#",
       "#..................#",
@@ -127,7 +129,7 @@ export const MAPS = {
       "####################",
     ],
     entities: [
-      { id: "renbed", x: 7, y: 1, w: 6, h: 7, interact: "s_ren_bed" },
+      { id: "renbed", x: 8, y: 1, w: 4, h: 5, interact: "s_ren_bed" },
       { id: "flowers", x: 1, y: 2, w: 5, h: 5, interact: "s_flowers" },
       { id: "chair", x: 13, y: 2, w: 2, h: 4, interact: "s_chair" },
     ],

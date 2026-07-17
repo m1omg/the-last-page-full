@@ -104,6 +104,12 @@ function enemyAct(e, party, wall) {
 }
 
 function reach(e, o, actor) {
+  if (e.def.reachStory) {
+    // battle.js: the final boss — story beats land exactly one per round, no
+    // storm gate, no giggly double-settle, no stamp bonus
+    if (o.good && !e.settled) { e.calm++; e.settled++; if (e.calm >= e.def.calmNeed) e.soothed = true; }
+    return;
+  }
   if (!o.good) { e.calm = Math.max(0, e.calm - 1); if (e.emotion !== "giggly") e.emotion = e.storm; e.lastReach = null; return; }
   if (o.label === e.lastReach && e.emotion !== "giggly") return; // giggly takes an encore
   if (e.emotion === e.storm) { e.emotion = "neutral"; e.lastReach = o.label; return; }
@@ -126,7 +132,8 @@ function reach(e, o, actor) {
   }
 }
 
-// one battle; policy = "peace" | "fight". Returns { rounds, survived, partyHpLeft }
+// one battle; policy = "peace" | "fight". Returns { rounds, survived, hpPct }
+const hpPct = (party) => party.reduce((s, m) => s + m.hp, 0) / party.reduce((s, m) => s + m.maxHp, 0);
 function sim(partyIds, troop, policy, pages, charms = {}) {
   const party = mkParty(partyIds, pages, charms);
   const foes = mkFoes(troop);
@@ -157,7 +164,7 @@ function sim(partyIds, troop, policy, pages, charms = {}) {
       if (m.id === "biscuit" && e.rallied && m.ink >= 3 && !wall) { m.ink -= 3; wall = true; continue; }
       if (policy === "peace") {
         // shift the storm with the right skill when available, else reach
-        if (e.emotion === e.storm) {
+        if (e.emotion === e.storm && !e.def.reachStory) {
           const sk = m.skills.map((s) => SKILLS[s]).find((s) => s.kind === "emotion" && s.target === "enemy" && s.emotion !== e.storm);
           if (sk && m.ink >= sk.ink) { acts.push({ t: "shift", m, tgt: e, sk }); continue; }
         }
@@ -196,13 +203,13 @@ function sim(partyIds, troop, policy, pages, charms = {}) {
       } else if (a.t === "enemy") {
         enemyAct(a.e, party, wall);
       }
-      if (!party.some((p) => p.hp > 0)) return { rounds: round, survived: false };
-      if (!aliveFoes().length) return { rounds: round, survived: true };
+      if (!party.some((p) => p.hp > 0)) return { rounds: round, survived: false, hpPct: 0 };
+      if (!aliveFoes().length) return { rounds: round, survived: true, hpPct: hpPct(party) };
     }
     for (const m of party) { m.guard = false; if (m.emotion === "gloomy" && m.hp > 0) m.ink = Math.min(m.maxInk, m.ink + 1); }
     for (const e of foes) e.guard = false;
   }
-  return { rounds: 40, survived: party.some((p) => p.hp > 0) };
+  return { rounds: 40, survived: party.some((p) => p.hp > 0), hpPct: hpPct(party) };
 }
 
 function report(label, partyIds, troop, pages = 0, charms = null) {
@@ -210,15 +217,19 @@ function report(label, partyIds, troop, pages = 0, charms = null) {
     if (policy === "fight" && ENEMIES[TROOPS[troop][0]].immune) continue;
     if (policy === "fight" && charms) continue; // charm rows: peace pacing is the question
     const rs = [], deaths = { n: 0 };
+    let hpSum = 0, hpN = 0;
     for (let i = 0; i < RUNS; i++) {
       const r = sim(partyIds, troop, policy, pages, charms || {});
       rs.push(r.rounds);
       if (!r.survived) deaths.n++;
+      else { hpSum += r.hpPct; hpN++; }
     }
     rs.sort((a, b) => a - b);
     const med = rs[Math.floor(rs.length / 2)];
     const p90 = rs[Math.floor(rs.length * 0.9)];
-    console.log(`${label.padEnd(26)} ${policy.padEnd(6)} median ${String(med).padStart(2)}  p90 ${String(p90).padStart(2)}  losses ${(deaths.n / RUNS * 100).toFixed(0)}%`);
+    // endHP = avg party HP at the win — the "do hits sting?" gauge
+    const endHp = hpN ? `${(hpSum / hpN * 100).toFixed(0).padStart(3)}%` : "  -";
+    console.log(`${label.padEnd(26)} ${policy.padEnd(6)} median ${String(med).padStart(2)}  p90 ${String(p90).padStart(2)}  losses ${(deaths.n / RUNS * 100).toFixed(0)}%  endHP ${endHp}`);
   }
 }
 
@@ -239,6 +250,7 @@ report("works pair (quartet)", ["mira", "biscuit", "wisp", "stub"], "t_works_pai
 report("ORACLE (quartet)", ["mira", "biscuit", "wisp", "stub"], "t_boss_oracle", 4);
 report("depths inklet pair (4)", ["mira", "biscuit", "wisp", "stub"], "t_inklet_pair", 5);
 report("EMBER superboss (4, 6pg)", ["mira", "biscuit", "wisp", "stub"], "t_boss_unfinished", 6);
+report("SMUDGE finale (4, 6pg)", ["mira", "biscuit", "wisp", "stub"], "t_boss_smudge", 6);
 
 // charmed peace runs — ribbon from the dunes bench, stamp from Patch, locket
 // from the works conveyor. This is the loadout a thorough player brings.
@@ -251,3 +263,4 @@ report("works pair +charms", ["mira", "biscuit", "wisp", "stub"], "t_works_pair"
 report("ORACLE +charms", ["mira", "biscuit", "wisp", "stub"], "t_boss_oracle", 4, RSL);
 report("depths inklets +charms", ["mira", "biscuit", "wisp", "stub"], "t_inklet_pair", 5, RSL);
 report("EMBER +charms (6pg)", ["mira", "biscuit", "wisp", "stub"], "t_boss_unfinished", 6, RSL);
+report("SMUDGE +charms (6pg)", ["mira", "biscuit", "wisp", "stub"], "t_boss_smudge", 6, RSL);

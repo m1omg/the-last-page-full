@@ -671,9 +671,9 @@ await waitChoice(20000); await chooseOption(0); // go outside
 await waitIdle(20000);
 if ((await g("window.__game.game.state.map")) !== "real_street") fail("no street");
 await shot("14_street");
-await walkTo(9, 1); await pressToward("up", 1); await waitIdle(20000);
+await walkTo(9, 3); await pressToward("up", 1); await waitIdle(20000);
 if ((await g("window.__game.game.state.map")) !== "hospital_room") fail("no hospital");
-await walkTo(9, 8); await g(`window.__game.game.state.facing="up"`); await key("KeyZ");
+await walkTo(9, 6); await g(`window.__game.game.state.facing="up"`); await key("KeyZ");
 step = "true ending";
 {
   const t4 = Date.now();

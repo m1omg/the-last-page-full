@@ -86,7 +86,7 @@ export const ENEMIES = {
   },
   inklet: {
     name: "Inklet", img: "en_inklet",
-    hp: 62, atk: 18, def: 4, spd: 8, emotion: "gloomy",
+    hp: 62, atk: 28, def: 4, spd: 8, emotion: "gloomy",
     intro: "A little blob of the Smudge... but it's reaching up at you. It just wants to be held.",
     acts: [
       { kind: "attack", mult: 1.0, msg: "{e} splashes cold ink on you!" },
@@ -147,7 +147,7 @@ export const ENEMIES = {
   // ------------------------------------------------- If-Then Works (bargaining)
   ticktick: {
     name: "Tick-Tick", img: "en_ticktick",
-    hp: 66, atk: 19, def: 6, spd: 14, emotion: "grumpy",
+    hp: 66, atk: 25, def: 6, spd: 14, emotion: "grumpy",
     intro: "Tick-Tick vibrates with terrible urgency. It is late for something that already happened.",
     acts: [
       { kind: "attack", mult: 1.2, msg: "{e} rings both bell-ears right in your face!" },
@@ -166,7 +166,7 @@ export const ENEMIES = {
   },
   redo: {
     name: "Redo Mouse", img: "en_redo",
-    hp: 72, atk: 18, def: 12, spd: 8, emotion: "gloomy",
+    hp: 72, atk: 24, def: 12, spd: 8, emotion: "gloomy",
     intro: "Redo Mouse pushes its little cart around the same dotted circle, wearing the path into a groove.",
     acts: [
       { kind: "attack", mult: 1.1, msg: "{e} runs you over with the eraser cart!" },
@@ -276,7 +276,7 @@ export const ENEMIES = {
   },
   oracle: {
     name: "THE WIND-UP ORACLE", img: "boss_oracle", boss: true,
-    hp: 160, atk: 21, def: 7, spd: 9, emotion: "gloomy",
+    hp: 160, atk: 27, def: 7, spd: 9, emotion: "gloomy",
     intro: "The Wind-Up Oracle's key turns slowly, slowly. \"WELCOME BACK,\" it says, though you have never been here. \"EVERYONE COMES BACK. REWIND?\"",
     acts: [
       { kind: "attack", mult: 1.2, msg: "{e} snaps its tin fingers - the moment replays, and the flinch hits you fresh!" },
@@ -298,7 +298,7 @@ export const ENEMIES = {
   },
   unfinished: {
     name: "THE UNFINISHED ONE", img: "boss_unfinished", boss: true,
-    hp: 330, atk: 28, def: 10, spd: 10, emotion: "grumpy", rotate: true, calmNeed: 13,
+    hp: 330, atk: 32, def: 10, spd: 10, emotion: "grumpy", rotate: true, calmNeed: 13,
     intro: "Something enormous uncurls: half of it magnificent, half of it construction lines. The finished eye fixes on you. \"YOU STOPPED,\" it says. \"YOU NEVER EVEN NAMED ME.\"",
     acts: [
       { kind: "attack", mult: 1.3, msg: "{e} strikes with the finished claw - beautiful and precise!" },
@@ -319,11 +319,12 @@ export const ENEMIES = {
   },
   smudge: {
     name: "THE SMUDGE", img: "boss_smudge", boss: true, final: true,
-    hp: 999, atk: 16, def: 99, spd: 1, emotion: "neutral",
+    hp: 999, atk: 30, def: 99, spd: 1, emotion: "neutral",
     immune: true, // attacks are soaked; only Reach Out works
     intro: "The Smudge rises like a wave that never crashes. Deep inside it, someone unfinished is reaching out.",
     acts: [
-      { kind: "attack", mult: 0.9, targets: "all", msg: "Cold ink washes over everyone. It doesn't hate you. That's the worst part." },
+      { kind: "attack", mult: 0.85, targets: "all", msg: "Cold ink washes over everyone. It doesn't hate you. That's the worst part." },
+      { kind: "attack", mult: 1.6, msg: "The ink gathers into one slow wave - and comes down, all of it, on one of you." },
       { kind: "emotion", target: "player", emotion: "gloomy", msg: "The ink whispers with your own voice: \"It was your fault.\"" },
       { kind: "idle", msg: "The Smudge waits. It has all the time you refuse to spend." },
     ],

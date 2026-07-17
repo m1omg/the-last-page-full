@@ -156,7 +156,7 @@ for (const d of Object.values(MAPS)) {
   if (d.bgSwap) wantImgs.add(d.bgSwap.bg); // alternate painting (e.g. healed meadow)
 }
 for (const e of Object.values(ENEMIES)) wantImgs.add(e.img);
-["cg_title", "cg_memory_1", "cg_memory_2", "cg_memory_3", "cg_memory_4", "cg_ending_true", "cg_ending_page",
+["cg_title", "cg_memory_1", "cg_memory_2", "cg_memory_3", "cg_memory_4", "cg_ending_true", "cg_ending_page", "cg_room_314",
   "pt_mira_neutral", "pt_mira_giggly", "pt_mira_gloomy", "pt_mira_grumpy", "pt_biscuit", "pt_wisp", "pt_ren",
   "sp_biscuit", "sp_wisp",
   ...["d0", "d1", "l0", "l1", "r0", "r1", "u0", "u1"].map((s) => `sp_mira_${s}`)].forEach((k) => wantImgs.add(k));

@@ -415,3 +415,40 @@ A follow-up tuning session, all changes sim-checked against §9's bands:
 - **"Ren drew the bark wrong" confused a player** — it's the dog's woof, not
   tree bark. Stub now says Ren wrote the bark in the speech bubble as
   "BORK!", and the Smoother's "Name the erased dog" line matches.
+
+## 14. The finale pressure patch (2026-07-17)
+
+Player report from the true-ending stretch: "the smudge doesn't attack enough
+with strong enough attacks, late game everyone barely takes damage."
+
+- **The Smudge was toothless by construction.** atk 16 (Ember has 32), a
+  single 0.9× all-hit as its only attack, picked uniformly from three acts —
+  so it attacked one round in three for ~9-11 damage against ~90-110 HP pools,
+  and it wasn't modeled in `balance_sim.mjs` at all (reachStory made it "not a
+  battle" to the sim). Now: atk 30, all-hit at 0.85×, plus a new 1.6×
+  single-target crush act — half its rounds are attacks. The fight is still
+  exactly one heart per round (4 rounds), still 0% losses in the sim with
+  heal-when-hurt play; it just finally *costs* something (endHP ~74%,
+  singles land ~50 on one member).
+- **Late-game intake retune** (damage only — calmNeed/rounds untouched):
+  ticktick 19→25, redo 18→24, inklet 18→28, oracle 21→27, unfinished
+  28→32. First pass at unfinished 36 pushed charmed losses to 13% and
+  charmless to 34% — too lethal even for the optional superboss; 32 lands at
+  6%/12% with endHP ~54% charmed.
+- **The sim now proves "hits sting".** `balance_sim.mjs` gained a reachStory
+  model (one story beat per round, no storm gate / giggly / stamp effects,
+  and no storm-shift skill wasting against a neutral-storm boss) plus an
+  `endHP` column — average party HP at the win. That's the gauge for damage
+  pressure; rounds/losses alone hid the "nobody ever gets hurt" failure mode.
+- **Ending-walk staging flaws** (same report): the `real_street` walkable
+  column ran to row 0, so Mira walked *on the hospital facade* to reach the
+  door trigger at y0 — rows 0-1 are walls now and the trigger sits on the
+  doorstep band (row 2). Base-grid closing is save-safe here: saves happen
+  only at lamps/checkpoints and none exist on this map. And in
+  `hospital_room`, Ren + bed were painted ~2× person scale while the bedside
+  text says "Ren is smaller than you remember". The bed block was PIL-shrunk
+  to 62% onto a soft sage rug (the rug hides the floor-reconstruction seams
+  — matching the painting's vignette patch-perfectly was a losing fight),
+  freed tiles opened (open-only, save-safe), and the *untouched* original
+  painting now shows full-screen as a `cg_room_314` establishing shot on
+  arrival ("Room 314."), so the beloved oversized-Ren art survives as a CG.

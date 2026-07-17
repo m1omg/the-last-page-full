@@ -1085,7 +1085,13 @@ export const SCRIPTS = {
     { t: "fade", ms: 1000 },
     { t: "tp", map: "hospital_room", x: 10, y: 12, facing: "up" },
     { t: "unfade", ms: 1400 },
-    n("Room 314. Paper cranes on the table - Mom's been folding them here,\nall these weeks, saying nothing."),
+    // the untouched room painting, shown big: one long look before walking in
+    { t: "cg", img: "cg_room_314", lines: [
+      "Room 314.",
+      "Paper cranes on the table - Mom's been folding them here,",
+      "all these weeks, saying nothing.",
+      "And there, in all that quiet: Ren.",
+    ] },
     n("(Go to the bed.)"),
     ] },
   ],

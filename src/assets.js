@@ -10,7 +10,7 @@ const JPG = [
   "pt_mira_neutral", "pt_mira_giggly", "pt_mira_gloomy", "pt_mira_grumpy",
   "pt_biscuit", "pt_wisp", "pt_ren", "pt_stub",
   "cg_memory_1", "cg_memory_2", "cg_memory_3", "cg_memory_4",
-  "cg_ending_true", "cg_ending_page", "cg_memory_5", "cg_memory_6",
+  "cg_ending_true", "cg_ending_page", "cg_memory_5", "cg_memory_6", "cg_room_314",
   "bg_dunes_1", "bg_dunes_2", "bg_works_1", "bg_works_2",
 ];
 const PNG = [
