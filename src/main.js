@@ -7,6 +7,7 @@ import * as uiNS from "./ui.js"; // namespace object tracks the live FONT/TEXT_S
 import { newGameState, saveGame, loadGame, hasSave, importSave } from "./state.js";
 import { touch } from "./touch.js";
 import { textmode } from "./textmode.js";
+import { minigames } from "./minigame.js";
 import { hotspots } from "./hotspots.js";
 import { Dialogue } from "./dialogue.js";
 import { runScript } from "./cutscene.js";
@@ -63,6 +64,7 @@ const game = {
   cutsceneDepth: 0,
   abortCutscenes: false,
   debug: new URLSearchParams(location.search).has("debug"),
+  forceTiming: false, // debug forces the timing beats to Auto unless a test opts in
   preload: null, // background asset stream; game entry awaits it
   entering: false, // between title fade-out and map entry — show load progress
   title: { index: 0, t: 0 },
@@ -252,17 +254,19 @@ window.__game = {
 const TOUCH_OPT = "Touch: ";
 const SOUND_OPT = "Sound: ";
 const TEXT_OPT = "Text: ";
+const MINI_OPT = "Minigames: ";
 
-// six rows at most, so they're packed tighter and start higher than the old
-// five: at 492+i*40 the sixth row ran into the footer hint drawn at y=690.
-const OPT_Y0 = 464, OPT_STEP = 38;
+// seven rows at most, packed tighter and starting higher than the old six:
+// at 464+i*38 the seventh row ran into the footer hint drawn at y=690.
+const OPT_Y0 = 446, OPT_STEP = 36;
 
 function titleOptions() {
   const base = hasSave()
     ? ["Continue", "New Game", "Import save"]
     : ["New Game", "Import save"];
   return [...base, SOUND_OPT + (audio.isMuted() ? "OFF" : "ON"),
-          TOUCH_OPT + touch.label(), TEXT_OPT + textmode.label()];
+          TOUCH_OPT + touch.label(), TEXT_OPT + textmode.label(),
+          MINI_OPT + minigames.label()];
 }
 
 function updateTitle(dt) {
@@ -283,6 +287,11 @@ function updateTitle(dt) {
     }
     if (choice.startsWith(TEXT_OPT)) {
       textmode.cycle();
+      audio.sfx("sfx_confirm");
+      return;
+    }
+    if (choice.startsWith(MINI_OPT)) {
+      minigames.cycle();
       audio.sfx("sfx_confirm");
       return;
     }
@@ -351,12 +360,12 @@ function drawTitle() {
   });
   ctx.textAlign = "center";
   if (game.title.noticeT > 0) {
-    // above the option list — six options now reach close to the footer
+    // above the option list — seven options now reach close to the footer
     ctx.font = `bold 18px ${FONT}`;
     ctx.lineWidth = 5;
-    ctx.strokeText(game.title.notice, 480, 432);
+    ctx.strokeText(game.title.notice, 480, 414);
     ctx.fillStyle = "#ffd9a0";
-    ctx.fillText(game.title.notice, 480, 432);
+    ctx.fillText(game.title.notice, 480, 414);
   }
   ctx.font = `15px ${FONT}`;
   ctx.lineWidth = 4;
@@ -606,6 +615,7 @@ function frame(now) {
     return game.mapScene.setClickTarget(x, y);
   });
   textmode.init(); // needs touch.capable to resolve "auto"
+  minigames.init();
   // block only on what the title screen itself needs (~3MB: its art, its
   // theme, every SFX, the font); the other ~40MB stream in behind it
   await Promise.all([assets.init(), audio.init(), loadFonts()]);

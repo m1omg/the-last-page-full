@@ -254,6 +254,74 @@ await g(`(() => {
   }
 }
 
+step = "battle timing minigame";
+// The timing beats suspend the turn engine (battle.minigame gate). Under
+// ?debug they stay off unless a test opts in via game.forceTiming — this step
+// opts in, proves an attack act suspends on a beat, resolves it as a forced
+// PERFECT, and checks the 1.3x multiplier lands where the plain hit is 115
+// (the damage anchor asserted above): 100 atk × 1.3 × 1.15 → 150.
+await g(`(() => {
+  const gme = window.__game.game;
+  const b = gme.battle;
+  gme.forceTiming = true;
+  window.__oldRandom = Math.random;
+  Math.random = () => 0.5; // fixed spread, no dodge
+  window.__beats = 0;
+  const origWith = b.withTiming.bind(b);
+  b.withTiming = (k, o, c) => { window.__beats++; origWith(k, o, c); };
+  b.msgQ = []; b.msgShown = 0; b.msgDone = false;
+  window.__mgTarget = { name: "Beat Target", hp: 1000, maxHp: 1000, emotion: "neutral", guard: false, def: 0 };
+  const actor = { name: "Beat Tester", hp: 1, atk: 100, emotion: "neutral", charm: null };
+  b.pendingActs = [];
+  b.turnQ = [{ kind: "attack", actor, target: window.__mgTarget }];
+  b.phase = "anim";
+})()`);
+await page.waitForTimeout(250);
+{
+  if (!(await g("!!window.__game.game.battle.minigame"))) fail("attack act did not suspend on a timing beat with forceTiming on");
+  if ((await mode()) !== "battle") fail("battle mode lost while a beat was live");
+  // force a perfect verdict with the linger already over; the update gate resolves it
+  await g(`(() => {
+    const mg = window.__game.game.battle.minigame;
+    mg.t = mg.cfg.center; mg.pressT = mg.t; mg.quality = "perfect"; mg.verdictAt = mg.t; mg.doneAt = mg.t;
+  })()`);
+  await page.waitForTimeout(250);
+  if (await g("!!window.__game.game.battle.minigame")) fail("perfect beat never resolved");
+  const dmg = 1000 - (await g("window.__mgTarget.hp"));
+  if (dmg !== 150) fail(`perfect strike dealt ${dmg}, want 150 (1.3x over the 115 anchor)`);
+  const hitMsg = await g(`window.__game.game.battle.msgQ.find(m => /Beat Target/.test(m)) || ""`);
+  if (!/A perfect strike!/.test(hitMsg)) fail(`perfect strike message missing: ${JSON.stringify(hitMsg)}`);
+}
+// one brace beat per enemy act — a multi-target swing prompts ONCE and the
+// beat resolves through a real (injected) confirm press, covering every target
+await g(`(() => {
+  const b = window.__game.game.battle;
+  b.msgQ = []; b.msgShown = 0; b.msgDone = false;
+  window.__beats = 0;
+  window.__hpBefore = b.party.map(m => m.hp);
+  const foe = { name: "Beat Foe", hp: 500, atk: 30, emotion: "neutral", calm: 0,
+    def: { boss: false, acts: [{ kind: "attack", targets: "all", msg: "SWING" }] } };
+  b.turnQ = [{ kind: "enemyact", actor: foe }];
+  b.phase = "anim";
+})()`);
+await page.waitForTimeout(250);
+{
+  if (!(await g("!!window.__game.game.battle.minigame"))) fail("enemy attack did not open a brace beat");
+  await g(`window.__game.input.inject("confirm")`); // the real input path decides the verdict
+  const t0 = Date.now();
+  while (await g("!!window.__game.game.battle.minigame")) {
+    if (Date.now() - t0 > 5000) fail("brace beat never resolved after a confirm press");
+    await page.waitForTimeout(100);
+  }
+  if ((await g("window.__beats")) !== 1) fail(`multi-target enemy act opened ${await g("window.__beats")} beats, want 1`);
+  const drops = await g("window.__game.game.battle.party.map((m, i) => window.__hpBefore[i] - m.hp)");
+  if (!drops.every((d) => d > 0)) fail(`one brace beat should cover every target of the swing, got drops ${JSON.stringify(drops)}`);
+}
+await g(`(() => {
+  Math.random = window.__oldRandom;
+  window.__game.game.forceTiming = false;
+})()`);
+
 step = "stranded save repair";
 // a save that already beat the Smoother without Stub (shipped bug) must come
 // back from Continue with Stub folded in by migrateSave
@@ -374,7 +442,7 @@ if (litLum < unlitLum + 4) {
 }
 
 if (errors.length) fail("console errors during run:\n" + errors.join("\n"));
-console.log("REGRESS OK — dunes reachability, Patch, Stub repair, battle messages, regular combat pressure, lighthouse state/render");
+console.log("REGRESS OK — dunes reachability, Patch, Stub repair, battle messages, regular combat pressure, timing beats, lighthouse state/render");
 await browser.close();
 server.close();
 process.exit(0);

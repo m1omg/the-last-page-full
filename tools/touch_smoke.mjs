@@ -336,16 +336,16 @@ for (const schemeUnderTest of ["gestures", "dpad"]) {
   ok("on title", (await page.evaluate("window.__game.game.mode")) === "title");
   ok("starts in dpad", (await page.evaluate("window.__game.touch.scheme")) === "dpad");
 
-  // options: Continue, New Game, Import save, Sound, Touch, Text
-  // rows at OPT_Y0 + i*OPT_STEP (main.js) — six of them now, so 464 + i*38
-  const DRAW_Y = (i) => 464 + i * 38;
+  // options: Continue, New Game, Import save, Sound, Touch, Text, Minigames
+  // rows at OPT_Y0 + i*OPT_STEP (main.js) — seven of them now, so 446 + i*36
+  const DRAW_Y = (i) => 446 + i * 36;
   const ROW = (i) => DRAW_Y(i) + 8; // tap the middle of the row
   await tapLogical(page, cdp, 500, ROW(4)); // Touch
   ok("tapping 'Touch:' on the title escapes d-pad → gestures",
      (await page.evaluate("window.__game.touch.scheme")) === "gestures");
   ok("still on the title", (await page.evaluate("window.__game.game.mode")) === "title");
-  // the 6th row (22px tall, drawn from its top) must clear the footer at y=690
-  ok("six title rows still fit above the footer", DRAW_Y(5) + 22 < 690, `last row bottom ${DRAW_Y(5) + 22}`);
+  // the 7th row (22px tall, drawn from its top) must clear the footer at y=690
+  ok("seven title rows still fit above the footer", DRAW_Y(6) + 22 < 690, `last row bottom ${DRAW_Y(6) + 22}`);
 
   // and tapping "New Game" starts the game, no swiping at all
   await tapLogical(page, cdp, 500, ROW(1));
@@ -486,7 +486,7 @@ for (const schemeUnderTest of ["gestures", "dpad"]) {
   console.log("\n[mouse]");
 
   // cursor affordance on the title: pointer over a row, default off it
-  const row = (i) => 464 + i * 38 + 8;
+  const row = (i) => 446 + i * 36 + 8;
   let p = await toCss(page, 500, row(3));
   await page.mouse.move(p.x, p.y);
   await page.waitForTimeout(150);

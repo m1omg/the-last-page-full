@@ -18,6 +18,26 @@ const ENEMY_DAMAGE_MULT = 1.20; // battle.js: enemy-to-party difficulty increase
 const REGULAR_ENEMY_DAMAGE_MULT = 1.15; // battle.js: extra non-boss damage
 const REGULAR_ATTACK_WEIGHT = 2; // battle.js: non-boss attack selection weight
 
+// timing minigames (src/minigame.js): quality distributions per player model.
+// "auto" = the Auto setting (and the ?debug harness) = exactly the pre-minigame
+// formulas — the regression anchor. "average" is the pacing baseline the round
+// bands are checked against; "skilled" should land ~1 round under it on the
+// fight route.   TIMING=auto|average|skilled node tools/balance_sim.mjs
+const TIMING_PROFILE = process.env.TIMING || "average";
+const DIST = {
+  auto:    { attack: { perfect: 0,    good: 1,    miss: 0    }, guard: { perfect: 0,    good: 0,    miss: 1    }, reach: { perfect: 0 } },
+  average: { attack: { perfect: 0.20, good: 0.60, miss: 0.20 }, guard: { perfect: 0.15, good: 0.45, miss: 0.40 }, reach: { perfect: 0.20 } },
+  skilled: { attack: { perfect: 0.60, good: 0.35, miss: 0.05 }, guard: { perfect: 0.50, good: 0.40, miss: 0.10 }, reach: { perfect: 0.60 } },
+};
+if (!DIST[TIMING_PROFILE]) { console.error(`unknown TIMING profile "${TIMING_PROFILE}" (auto|average|skilled)`); process.exit(1); }
+const ATTACK_MULT = { perfect: 1.3, good: 1.0, miss: 0.85 }; // = src/minigame.js TIMING
+const GUARD_MULT  = { perfect: 0.7, good: 0.85, miss: 1.0 };
+function rollQ(kind) {
+  const d = DIST[TIMING_PROFILE][kind];
+  const r = Math.random();
+  return r < d.perfect ? "perfect" : r < d.perfect + (d.good ?? 0) ? "good" : "miss";
+}
+
 // pages = torn pages collected before this fight: each grants +8 maxHp/+4 maxInk
 // (see the "page" command in src/cutscene.js) — the party's only growth
 function mkParty(ids, pages = 0, charms = {}) {
@@ -54,10 +74,11 @@ function dmgTo(t, raw, wall, isParty, sourceEnemy = null) {
 }
 
 function playerHit(a, t, mult) {
-  if (t.def.immune) return 0;
+  if (t.def.immune) return 0; // battle.js skips the timing beat too
   let raw = (a.atk + (a.charm === "charm_sunbadge" ? 3 : 0)) * mult;
   if (a.emotion === "grumpy") raw *= 1.2;
   raw *= advMult(a.emotion, t.emotion);
+  raw *= ATTACK_MULT[rollQ("attack")]; // battle.js: the strike beat, same spot
   raw -= t.defs * 0.55;
   return dmgTo(t, Math.max(1, raw), false, false);
 }
@@ -80,6 +101,8 @@ function enemyAct(e, party, wall) {
   const alive = party.filter((m) => m.hp > 0);
   if (!alive.length) return;
   const soften = Math.max(0.7, 1 - 0.045 * e.calm);
+  // battle.js: one brace beat per enemy act, covering every target it hits
+  const gm = (act.kind === "attack" || act.kind === "bell") ? GUARD_MULT[rollQ("guard")] : 1;
   if (act.kind === "attack") {
     const list = act.targets === "all" ? alive : [alive[Math.floor(Math.random() * alive.length)]];
     for (const t of list) {
@@ -88,7 +111,7 @@ function enemyAct(e, party, wall) {
       if (e.emotion === "giggly") raw *= 1.15; // overexcited — swings wild
       raw *= advMult(e.emotion, t.emotion);
       raw -= t.def * 0.55;
-      t.hp = Math.max(0, t.hp - dmgTo(t, Math.max(1, raw), wall, true, e));
+      t.hp = Math.max(0, t.hp - dmgTo(t, Math.max(1, raw) * gm, wall, true, e));
     }
   } else if (act.kind === "emotion") {
     if (act.target === "self") e.emotion = act.emotion;
@@ -98,12 +121,16 @@ function enemyAct(e, party, wall) {
   } else if (act.kind === "bell") {
     for (const t of alive) {
       t.emotion = "gloomy";
-      t.hp = Math.max(0, t.hp - Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * DAMAGE_MULT * enemyDamageMult(e) * soften)));
+      t.hp = Math.max(0, t.hp - Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * DAMAGE_MULT * enemyDamageMult(e) * soften * gm)));
     }
   }
 }
 
 function reach(e, o, actor) {
+  // battle.js: a perfect reach beat on a kind line refunds 1 Ink to the reacher
+  if (o.good && actor && Math.random() < DIST[TIMING_PROFILE].reach.perfect) {
+    actor.ink = Math.min(actor.maxInk, actor.ink + 1);
+  }
   if (e.def.reachStory) {
     // battle.js: the final boss — story beats land exactly one per round, no
     // storm gate, no giggly double-settle, no stamp bonus
@@ -233,6 +260,7 @@ function report(label, partyIds, troop, pages = 0, charms = null) {
   }
 }
 
+console.log(`timing profile: ${TIMING_PROFILE}`);
 console.log("encounter                  route  rounds");
 report("tutorial (Mira solo)", ["mira"], "t_sniffle");
 report("meadow scribble (duo)", ["mira", "biscuit"], "t_scribble");
