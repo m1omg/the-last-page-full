@@ -6,6 +6,7 @@ import { drawBox, drawText, drawBar, EMOTION_COLOR } from "./ui.js";
 import { exportSave, importSave } from "./state.js";
 import { touch } from "./touch.js";
 import { textmode } from "./textmode.js";
+import { minigames } from "./minigame.js";
 import { hotspots } from "./hotspots.js";
 
 export class Menu {
@@ -58,6 +59,13 @@ export class Menu {
           textmode.cycle();
           audio.sfx("sfx_confirm");
           this.toast(`Text: ${textmode.label()}.`);
+        } },
+      { label: `Minigames: ${minigames.label()}`, run: () => {
+          minigames.cycle();
+          audio.sfx("sfx_confirm");
+          this.toast(minigames.mode === "on"
+            ? "Minigames: On - press Z on the beat."
+            : "Minigames: Auto - beats resolve themselves.");
         } },
       { label: "Return to the title", run: () => {
           this.open = false;
@@ -253,7 +261,7 @@ export class Menu {
       }
     } else {
       const list = this.optionItems();
-      // Six rows. 44px apart keeps the last one ("Return to the title")
+      // Seven rows. 44px apart keeps the last one ("Return to the title")
       // clear of the hint lines below; the smoke test reads optGeom to check
       // that, so this stays honest if another option is ever added.
       const Y0 = 180, STEP = 44, HINT_Y = 478;

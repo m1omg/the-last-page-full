@@ -16,6 +16,7 @@ import { audio } from "./audio.js";
 import { input } from "./input.js";
 import { drawBox, drawText, drawBar, wrapText, FONT, EMOTION_COLOR, emotionTag } from "./ui.js";
 import { hotspots } from "./hotspots.js";
+import { startTiming, updateTiming, drawTiming, timingMult, minigames } from "./minigame.js";
 
 const ADV = { giggly: "grumpy", grumpy: "gloomy", gloomy: "giggly" };
 const DAMAGE_MULT = 1.15; // shared pacing multiplier, applied in both directions
@@ -66,6 +67,7 @@ export class BattleScene {
     this.result = null;
     this.storyReachStep = 0;
     this.rounds = 0; // read by the smoke tests to guard against re-trivializing
+    this.minigame = null; // live timing beat — suspends the turn like msgQ does
 
     // Warm Ribbon: someone carrying it means every doodle starts LISTENING
     if (this.party.some((m) => m.hp > 0 && m.charm === "charm_ribbon")) {
@@ -77,6 +79,9 @@ export class BattleScene {
     if (cfg.tutorial) {
       this.queueMsg("(Battle basics: FIGHT deals damage. REACH OUT is how you talk to sad doodles - fill their hearts and the fight ends peacefully. Emotions beat each other in a circle: GIGGLY beats GRUMPY beats GLOOMY beats GIGGLY.)");
       this.queueMsg("(A doodle deep in a bad feeling CAN'T HEAR YOU. Reach out once to break the storm - or shift its mood with a skill - and THEN your words land. There's a little book about this lying in the Blank Page - once you pick it up, it stays in your POCKETS.)");
+      if (minigames.active(game)) {
+        this.queueMsg("(One more thing: when you swing, brace, or reach, a little beat appears - press Z right on it. A perfect beat hits harder, softens blows, and puts a drop of Ink back in your pen.)");
+      }
     }
   }
 
@@ -92,6 +97,17 @@ export class BattleScene {
     this.floaters = this.floaters.filter((f) => (f.t += dt) < 1.0);
     if (this.shakeT > 0) this.shakeT -= dt;
     for (const e of this.enemies) if (e.wobble > 0) e.wobble -= dt;
+
+    // a live timing beat suspends the turn engine, same as the msgQ below;
+    // its continuation resolves the stashed act with the earned multiplier
+    if (this.minigame) {
+      if (updateTiming(this.minigame, dt)) {
+        const mg = this.minigame;
+        this.minigame = null;
+        mg.onDone(timingMult(mg), mg.quality);
+      }
+      return;
+    }
 
     if (this.msgQ.length) {
       const cur = this.msgQ[0];
@@ -263,6 +279,19 @@ export class BattleScene {
     this.phase = "anim";
   }
 
+  // start a timing beat and stash the act's resolution in its continuation;
+  // with minigames off (or under ?debug) the act resolves instantly at 1.0
+  withTiming(kind, opts, cont) {
+    if (!minigames.active(this.game)) { cont(1.0, "auto"); return; }
+    this.minigame = startTiming(kind, { ...opts, onDone: cont });
+  }
+
+  // the target an attack will actually land on (doAttack retargets the same way)
+  attackTarget(target) {
+    return (!target || target.hp <= 0 || target.soothed)
+      ? this.aliveEnemies()[0] || this.aliveParty()[0] : target;
+  }
+
   advanceTurn() {
     if (this.checkEnd()) return;
     const act = this.turnQ.shift();
@@ -270,8 +299,21 @@ export class BattleScene {
     const a = act.actor;
     if (a.hp <= 0 || a.soothed) { return; }
     switch (act.kind) {
-      case "attack": this.doAttack(a, act.target, 1.0, null); break;
-      case "skill": this.doSkill(a, act); break;
+      case "attack": {
+        const t = this.attackTarget(act.target);
+        if (t && this.enemies.includes(t) && t.def.immune) { this.doAttack(a, act.target, 1.0, null); break; } // soak message, no beat
+        this.withTiming("attack", { actor: a }, (tm) => { this.doAttack(a, act.target, 1.0, null, tm); this.checkEnd(); });
+        break;
+      }
+      case "skill": {
+        const sk = SKILLS[act.skill];
+        const t = this.attackTarget(act.target);
+        const immune = t && this.enemies.includes(t) && t.def.immune;
+        if (sk && sk.kind === "attack" && a.ink >= sk.ink && !immune) {
+          this.withTiming("attack", { actor: a }, (tm) => { this.doSkill(a, act, tm); this.checkEnd(); });
+        } else this.doSkill(a, act);
+        break;
+      }
       case "guard":
         a.guard = true;
         a.ink = Math.min(a.maxInk, a.ink + 2);
@@ -288,8 +330,27 @@ export class BattleScene {
         break;
       }
       case "item": this.doItem(a, act); break;
-      case "reach": this.doReach(a, act); break;
-      case "enemyact": this.doEnemyAct(a); break;
+      case "reach": {
+        this.withTiming("reach", { actor: a, enemy: act.target }, (tm, q) => {
+          this.doReach(a, act);
+          // the beat never touches calm/settled/storm — a perfect on a kind
+          // line just puts a drop of ink back in the reacher's pen
+          if (q === "perfect" && act.option && act.option.good && a.hp > 0) {
+            a.ink = Math.min(a.maxInk, a.ink + 1);
+            this.addFloater(a, "+1✒", "#5a7fc4");
+          }
+          this.checkEnd();
+        });
+        break;
+      }
+      case "enemyact": {
+        const eAct = this.chooseEnemyAct(a);
+        if (eAct.kind === "attack" || eAct.kind === "bell") {
+          // one brace beat per enemy act — it covers every target of the swing
+          this.withTiming("guard", { enemy: a }, (gm) => { this.doEnemyAct(a, eAct, gm); this.checkEnd(); });
+        } else this.doEnemyAct(a, eAct);
+        break;
+      }
     }
     this.checkEnd();
   }
@@ -306,7 +367,8 @@ export class BattleScene {
     return { miss: false, dmg };
   }
 
-  doAttack(a, target, mult, skillName) {
+  // tm: timing-beat multiplier (1 when minigames are off/auto)
+  doAttack(a, target, mult, skillName, tm = 1) {
     if (!target || target.hp <= 0 || target.soothed) target = this.aliveEnemies()[0] || this.aliveParty()[0];
     if (!target) return;
     const isEnemyTarget = this.enemies.includes(target);
@@ -318,6 +380,7 @@ export class BattleScene {
     let raw = (a.atk + (a.charm === "charm_sunbadge" ? 3 : 0)) * mult;
     if (a.emotion === "grumpy") raw *= 1.2;
     raw *= advMult(a.emotion, target.emotion);
+    raw *= tm;
     raw -= (isEnemyTarget ? target.defs : target.def) * 0.55;
     const { miss, dmg } = this.dmgTo(target, Math.max(1, raw));
     if (miss) {
@@ -329,6 +392,7 @@ export class BattleScene {
     audio.sfx("sfx_hit");
     this.addFloater(target, `-${dmg}`, "#d4543a");
     this.queueMsg(`${a.name}${skillName ? ` uses ${skillName} and` : ""} hits ${target.name} for ${dmg}!` +
+      (tm > 1 ? " A perfect strike!" : "") +
       (advMult(a.emotion, target.emotion) > 1 ? " It strikes right at the heart of the mood!" : ""));
     if (isEnemyTarget && target.hp <= 0) {
       audio.sfx("sfx_tear");
@@ -338,7 +402,7 @@ export class BattleScene {
     }
   }
 
-  doSkill(a, act) {
+  doSkill(a, act, tm = 1) {
     const sk = SKILLS[act.skill];
     if (a.ink < sk.ink) return;
     // a torn friend can't take warmth (or borrowed ink) — refuse before the
@@ -349,7 +413,7 @@ export class BattleScene {
     }
     a.ink -= sk.ink;
     if (sk.kind === "attack") {
-      this.doAttack(a, act.target, sk.mult, sk.name);
+      this.doAttack(a, act.target, sk.mult, sk.name, tm);
       if (sk.selfEmotion) { a.emotion = sk.selfEmotion; audio.sfx("sfx_emotion", 0.6); this.queueMsg(`${a.name} got ${sk.selfEmotion.toUpperCase()} doing it!`); }
     } else if (sk.kind === "emotion") {
       const t = act.target || this.aliveEnemies()[0];
@@ -504,8 +568,10 @@ export class BattleScene {
     }
   }
 
-  doEnemyAct(e) {
-    const act = this.chooseEnemyAct(e);
+  // gm: the party's brace-beat multiplier (<1 on a good brace); one beat per
+  // act, applied to every target it hits
+  doEnemyAct(e, presetAct = null, gm = 1) {
+    const act = presetAct || this.chooseEnemyAct(e);
     const targets = this.aliveParty();
     if (!targets.length) return;
     // every heart softens the swings — kindness is armor, even mid-fight —
@@ -521,7 +587,7 @@ export class BattleScene {
         if (e.emotion === "giggly") raw *= 1.15; // overexcited — swings wild
         raw *= advMult(e.emotion, t.emotion);
         raw -= t.def * 0.55;
-        const { miss, dmg } = this.dmgTo(t, Math.max(1, raw), true, e);
+        const { miss, dmg } = this.dmgTo(t, Math.max(1, raw) * gm, true, e);
         if (miss) { text += `\n${t.name} giggles and dodges!`; continue; }
         t.hp = Math.max(0, t.hp - dmg);
         this.addFloater(t, `-${dmg}`, "#d4543a");
@@ -549,7 +615,7 @@ export class BattleScene {
       let text = msg;
       for (const t of targets) {
         t.emotion = "gloomy";
-        const dmg = Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * DAMAGE_MULT * enemyDamageMult(e) * soften));
+        const dmg = Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * DAMAGE_MULT * enemyDamageMult(e) * soften * gm));
         t.hp = Math.max(0, t.hp - dmg);
         this.addFloater(t, `-${dmg}`, "#5a7fc4");
         text += `\n${t.name} takes ${dmg} and turns GLOOMY.`;
@@ -746,6 +812,15 @@ export class BattleScene {
       ctx.globalAlpha = 1 - f.t;
       drawText(ctx, f.text, fx, fy, { size: 26, bold: true, align: "center", color: f.color });
       ctx.restore();
+    }
+
+    // the timing beat, anchored on the acting/target enemy when there is one
+    if (this.minigame) {
+      const mg = this.minigame;
+      let anchor = { x: 480, y: 330 };
+      const i = mg.enemy ? foes.indexOf(mg.enemy) : -1;
+      if (i >= 0) anchor = { x: 480 + (i - (n - 1) / 2) * 300, y: mg.enemy.def.boss ? 230 : 210 };
+      drawTiming(ctx, mg, anchor); // also registers the tap-anywhere hotspot
     }
 
     // party status panel — panels slim down when a fourth friend joins

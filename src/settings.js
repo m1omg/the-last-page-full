@@ -13,7 +13,11 @@ export const TOUCH_SCHEMES = ["gestures", "dpad"];
 // "auto" resolves to on for touch devices, off for desktop — see resolveMobile.
 export const MOBILE_MODES = ["auto", "on", "off"];
 
-const DEFAULTS = { touch: "gestures", muted: false, mobile: "auto" };
+// battle timing minigames: "auto" resolves every beat instantly at the neutral
+// multiplier — the accessibility escape hatch, and exactly the pre-minigame game.
+export const MINIGAME_MODES = ["on", "auto"];
+
+const DEFAULTS = { touch: "gestures", muted: false, mobile: "auto", minigames: "on" };
 
 export function resolveMobile(s, touchCapable) {
   if (s.mobile === "on") return true;
@@ -31,6 +35,7 @@ export function loadSettings() {
       touch: TOUCH_SCHEMES.includes(s.touch) ? s.touch : DEFAULTS.touch,
       muted: typeof s.muted === "boolean" ? s.muted : DEFAULTS.muted,
       mobile: MOBILE_MODES.includes(s.mobile) ? s.mobile : DEFAULTS.mobile,
+      minigames: MINIGAME_MODES.includes(s.minigames) ? s.minigames : DEFAULTS.minigames,
     };
   } catch (e) {
     return { ...DEFAULTS };

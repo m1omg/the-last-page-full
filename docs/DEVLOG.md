@@ -480,3 +480,46 @@ Measured at 12 Mbps with 40ms RTT (Playwright + CDP throttling): title in
 progress, `bgm_real` playing on arrival, zero WAV fallbacks, zero console
 errors. The smoke drivers now poll for map mode on entry instead of
 sleeping a fixed 1.6s, since entry legitimately waits for the stream.
+
+## 16. Timed hits (2026-07-17)
+
+"Combat is a grind" — every turn was menu, message, message. Now every
+combat verb carries a small timing beat (`src/minigame.js`), Paper-Mario
+style: a sweep bar on your swings (perfect 1.3× / good 1.0× / miss 0.85×,
+applied to `raw` before the defense subtraction), a shrinking brace ring on
+enemy attack/bell acts (perfect 0.7× / good 0.85× / late 1.0×, one beat per
+act covering all its targets — a second-wind boss swings twice, so it
+prompts twice, which is the point), and a shrinking heart on Reach Out.
+
+Engineering notes worth keeping:
+
+- **The suspension gate.** Battle resolution is one act per frame inside
+  `advanceTurn`, so a live beat can't block inline. `battle.update` gains a
+  `this.minigame` early-return gate directly modeled on the `msgQ` gate;
+  `withTiming(kind, opts, cont)` stashes the act's resolution in the beat's
+  continuation. With minigames off, `cont(1.0)` runs synchronously —
+  byte-for-byte the old flow.
+- **The peace route is structurally untouched.** The reach beat never
+  touches calm/settled/storm — `doReach` is unmodified. A PERFECT on a kind
+  line refunds 1 Ink to the reacher, an orthogonal bonus chosen precisely
+  because hearts-per-round (the thing that paces peace fights) can't move.
+  So the storm gate, settle cap, surge, cheer gamble, and rotate boss all
+  behave identically; only fight-route pacing and incoming damage shift.
+- **"Auto" is the balance baseline.** The toggle (`Minigames: On/Auto`,
+  title + Pockets→Options, stored in the settings blob like the text mode)
+  resolves every beat instantly at neutral — exactly the pre-beat game, so
+  the accessibility path and the tuned difficulty are the same thing.
+  `?debug` forces Auto unless a test sets `game.forceTiming` — the smoke
+  drivers press blindly through menus and would hang on a beat otherwise;
+  regress.mjs has a forceTiming step covering suspension, the 1.3× anchor
+  (149 over the 115 plain-hit check), and one-beat-per-multi-target-act.
+- **The simulator models the player.** `balance_sim.mjs` rolls beat quality
+  per swing from a profile: `TIMING=auto` (regression anchor — must match
+  the pre-beat baseline), `average` (default; 20/60/20 on attack — the
+  round bands in §13 are checked against this), `skilled` (60/35/5, lands
+  1–2 rounds under average on the boss fights). Verified: `auto` matches the
+  old baseline, `average` holds every band (peace medians are heart-gated
+  and cannot move), guard softening shows up as end-HP, not rounds.
+- Touch: the beat registers a full-canvas hotspot each frame (tap anywhere
+  = confirm), so both touch schemes and mouse clicks work with no new UI.
+  A 120ms grace window eats presses carried over from message-mashing.
