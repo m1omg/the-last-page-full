@@ -10,7 +10,7 @@
 export const ENEMIES = {
   sniffle: {
     name: "Sniffle", img: "en_sniffle",
-    hp: 30, atk: 10, def: 3, spd: 6, emotion: "gloomy",
+    hp: 30, atk: 9, def: 3, spd: 6, emotion: "gloomy",
     intro: "Sniffle drips quietly. It looks like it's been crying for days.",
     acts: [
       { kind: "attack", mult: 1.0, msg: "{e} sneezes a storm of soggy confetti!" },
@@ -29,7 +29,7 @@ export const ENEMIES = {
   },
   scribble: {
     name: "Scribbles", img: "en_scribble",
-    hp: 41, atk: 13, def: 4, spd: 12, emotion: "grumpy",
+    hp: 41, atk: 11, def: 4, spd: 12, emotion: "grumpy",
     intro: "Scribbles bristles like static. Something in its tangle hurts.",
     acts: [
       { kind: "attack", mult: 1.1, msg: "{e} ricochets off your head!" },
@@ -187,7 +187,7 @@ export const ENEMIES = {
   // ------------------------------------------------------------- bosses
   tangle: {
     name: "TANGLE", img: "boss_tangle", boss: true,
-    hp: 112, atk: 15, def: 6, spd: 9, emotion: "grumpy",
+    hp: 112, atk: 13, def: 6, spd: 9, emotion: "grumpy",
     intro: "TANGLE roars like a scribbled-out sentence. Every angry word ever left unsaid, wadded into one.",
     acts: [
       { kind: "attack", mult: 1.2, msg: "{e} lashes out with a whip of jagged lines!" },
