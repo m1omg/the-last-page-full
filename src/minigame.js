@@ -16,11 +16,11 @@ import { loadSettings, updateSettings, MINIGAME_MODES } from "./settings.js";
 // All times in ms. `center` is the beat; distance from it picks the verdict.
 // balance_sim.mjs mirrors the mults — keep them in sync (its DIST/…_MULT tables).
 export const TIMING = {
-  attack: { dur: 1000, center: 680, perfect: 45, good: 150, verdict: 450,
+  attack: { dur: 1000, center: 680, perfect: 60, good: 160, verdict: 450,
             mults: { perfect: 1.3, good: 1.0, miss: 0.85 } },
-  guard:  { dur: 1120, center: 900, perfect: 70, good: 180, verdict: 350,
+  guard:  { dur: 1120, center: 900, perfect: 85, good: 200, verdict: 350,
             mults: { perfect: 0.7, good: 0.85, miss: 1.0 } },
-  reach:  { dur: 1060, center: 860, perfect: 60, good: 170, verdict: 450,
+  reach:  { dur: 1060, center: 860, perfect: 80, good: 190, verdict: 450,
             mults: { perfect: 1.0, good: 1.0, miss: 1.0 } }, // bonus applied by battle.js
 };
 
@@ -28,16 +28,21 @@ export const TIMING = {
 // eat them so they can't instantly flub the beat
 const GRACE_MS = 120;
 
+// what the player sees is a frame-and-change older than the clock (render +
+// display latency), so a press aimed at the visual beat lands systematically
+// late — shift every press this much earlier before judging it
+const LAG_COMP = 30;
+
 const CUE = {
-  attack: (mg) => `${mg.actor ? mg.actor.name + " — " : ""}strike on the beat!`,
-  guard: () => "brace!",
-  reach: () => "reach out…",
+  attack: (mg) => `${mg.actor ? mg.actor.name + ": " : ""}Z on the red mark!`,
+  guard: () => "Z as it strikes!",
+  reach: () => "Z when the heart lands!",
 };
 
 const VERDICT = {
   attack: { perfect: "PERFECT!!", good: "good", miss: "…missed the beat" },
-  guard:  { perfect: "PERFECT!!", good: "good", miss: "…too late" },
-  reach:  { perfect: "PERFECT!!", good: "good", miss: "…too late" },
+  guard:  { perfect: "PERFECT!!", good: "good", missEarly: "…too soon", miss: "…too late" },
+  reach:  { perfect: "PERFECT!!", good: "good", missEarly: "…too soon", miss: "…too late" },
 };
 const VERDICT_STYLE = {
   perfect: { color: "#e8a53a", size: 34 },
@@ -49,8 +54,10 @@ export function startTiming(kind, opts = {}) {
   return {
     kind,
     cfg: TIMING[kind],
+    t0: performance.now(), // wall-clock start; t is derived from it each tick
     t: 0,            // ms elapsed
-    pressT: null,    // ms of the (first, only) press
+    pressT: null,    // lag-compensated ms of the (first, only) press
+    early: false,    // a miss before the beat (vs after / timed out)
     quality: null,   // "perfect" | "good" | "miss"
     verdictAt: null, // t at which the verdict was decided (press or timeout)
     doneAt: null,    // t at which the verdict linger ends
@@ -60,16 +67,23 @@ export function startTiming(kind, opts = {}) {
   };
 }
 
-// tick + input; returns true once the verdict has lingered and we're done
-export function updateTiming(mg, dt) {
-  mg.t += dt * 1000;
+// tick + input; returns true once the verdict has lingered and we're done.
+// The beat runs on the wall clock and judges the press's own event timestamp
+// (input.pressAt), not the frame it was noticed in — a press is never
+// penalized by frame quantization.
+export function updateTiming(mg, _dt) {
+  mg.t = performance.now() - mg.t0;
   if (!mg.quality) {
     if (input.hit("confirm")) {
       input.consume("confirm");
-      if (mg.t >= GRACE_MS) {
-        mg.pressT = mg.t;
-        const d = Math.abs(mg.t - mg.cfg.center);
-        mg.quality = d <= mg.cfg.perfect ? "perfect" : d <= mg.cfg.good ? "good" : "miss";
+      const raw = Math.max(0, (input.pressAt("confirm") ?? performance.now()) - mg.t0);
+      if (raw >= GRACE_MS) {
+        const press = raw - LAG_COMP;
+        mg.pressT = press;
+        const d = press - mg.cfg.center;
+        mg.early = d < 0;
+        const ad = Math.abs(d);
+        mg.quality = ad <= mg.cfg.perfect ? "perfect" : ad <= mg.cfg.good ? "good" : "miss";
         audio.sfx(mg.quality === "perfect" ? "sfx_save" : mg.quality === "good" ? "sfx_confirm" : "sfx_cancel",
                   mg.quality === "miss" ? 0.5 : 0.8);
         mg.verdictAt = mg.t;
@@ -77,6 +91,7 @@ export function updateTiming(mg, dt) {
       }
     } else if (mg.t >= mg.cfg.dur) {
       mg.quality = "miss";
+      mg.early = false;
       mg.verdictAt = mg.t;
       mg.doneAt = mg.t + 150; // timed out: no fanfare, short linger
     }
@@ -135,16 +150,29 @@ function drawRing(ctx, mg, anchor) {
   const p = Math.max(0, Math.min(1, mg.t / mg.cfg.center)); // 1 = on the beat
   ctx.save();
   if (isReach) {
-    // a heart shrinking onto a heart outline
+    // a heart shrinking onto a dashed target ring + heart outline — the target
+    // must read as "press when it lands here" at first sight (playtest: a bare
+    // shrinking heart didn't read as a beat at all)
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = "#e88aa0";
+    ctx.strokeStyle = "#e88aa0";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.arc(anchor.x, anchor.y, 44, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
     ctx.font = `38px ${FONT}`;
-    ctx.globalAlpha = 0.55;
-    ctx.fillText("♡", anchor.x, anchor.y);
-    ctx.globalAlpha = 0.9;
-    ctx.font = `${Math.round(130 - (130 - 38) * p)}px ${FONT}`;
+    ctx.strokeStyle = "#2a2320";
+    ctx.lineWidth = 2.5;
+    ctx.strokeText("♡", anchor.x, anchor.y);
+    const size = Math.round(110 - (110 - 38) * p);
+    ctx.font = `${size}px ${FONT}`;
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = "#e88aa0";
     ctx.fillText("♥", anchor.x, anchor.y);
+    ctx.lineWidth = 2;
+    ctx.strokeText("♥", anchor.x, anchor.y);
   } else {
     // an ink ring shrinking onto a dashed target circle
     ctx.strokeStyle = "#b8452e";
@@ -170,9 +198,11 @@ function drawVerdict(ctx, mg, anchor) {
   const st = VERDICT_STYLE[mg.quality];
   const linger = Math.max(1, mg.doneAt - mg.verdictAt);
   const a = Math.max(0, 1 - (mg.t - mg.verdictAt) / linger);
+  const text = (mg.quality === "miss" && mg.early && VERDICT[mg.kind].missEarly)
+    ? VERDICT[mg.kind].missEarly : VERDICT[mg.kind][mg.quality];
   ctx.save();
   ctx.globalAlpha = Math.min(1, a * 1.6);
-  drawText(ctx, VERDICT[mg.kind][mg.quality], anchor.x, anchor.y - 30,
+  drawText(ctx, text, anchor.x, anchor.y - 30,
     { size: st.size, bold: true, align: "center", color: st.color });
   ctx.restore();
 }

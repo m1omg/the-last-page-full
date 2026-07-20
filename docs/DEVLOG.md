@@ -523,3 +523,23 @@ Engineering notes worth keeping:
 - Touch: the beat registers a full-canvas hotspot each frame (tap anywhere
   = confirm), so both touch schemes and mouse clicks work with no new UI.
   A 120ms grace window eats presses carried over from message-mashing.
+
+### §16.1 Playtest calibration pass (2026-07-20)
+
+First live playtest surfaced three flaws, all fixed:
+
+- **Presses judged a frame late.** The beat ticked on accumulated `dt` and
+  judged a press against the frame it was *noticed* in, so a visually
+  perfect press could grade "good". The beat now runs on the wall clock and
+  judges the press's own event timestamp (`input.pressAt`, stamped in the
+  keydown/tap/press/inject paths), minus a 30ms display-latency allowance
+  (`LAG_COMP`) — what you see lands where you pressed. Windows widened a
+  touch too (attack ±60/±160, guard ±85/±200, reach ±80/±190); multipliers
+  unchanged, so the sim's profiles and the Auto anchor are untouched.
+- **The reach beat didn't read as a beat.** A bare shrinking heart looked
+  like a cutscene flourish. It now shrinks onto a dashed target ring plus a
+  heart outline (same grammar as the brace ring) with an ink-stroked edge,
+  and every cue names the button and the moment: "Z when the heart lands!",
+  "Z as it strikes!", "Z on the red mark!".
+- **Early presses said "…too late."** Miss verdicts on guard/reach now
+  split on which side of the beat the press fell: "…too soon" / "…too late".
