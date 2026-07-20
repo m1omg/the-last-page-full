@@ -543,3 +543,18 @@ First live playtest surfaced three flaws, all fixed:
   "Z as it strikes!", "Z on the red mark!".
 - **Early presses said "…too late."** Miss verdicts on guard/reach now
   split on which side of the beat the press fell: "…too soon" / "…too late".
+
+### §16.2 Miss-penalty tuning (2026-07-20)
+
+Playtest round two: "failed attacks, especially peaceful ones, are too
+powerful." Two knobs, both mirrored in the sim:
+
+- Attack miss 0.85× → **0.7×** — still lands, clearly worse. Average-play
+  expected multiplier is now exactly 1.0 (0.2·1.3 + 0.6·1.0 + 0.2·0.7),
+  so fight pacing sits on the pre-beat baseline with variance.
+- A **missed reach beat spills 1 Ink** from the reacher — the mirror image
+  of the perfect's +1 refund. Hearts/settle/storm stay untouched (kindness
+  can't be nerfed by a rhythm flub); the cost lives on the same orthogonal
+  ink axis as the bonus, and the sim's reach roll now has the full
+  perfect/good/miss split. Peace medians verified unchanged; the Auto
+  anchor still matches the pre-beat baseline.

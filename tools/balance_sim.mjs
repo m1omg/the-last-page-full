@@ -25,12 +25,12 @@ const REGULAR_ATTACK_WEIGHT = 2; // battle.js: non-boss attack selection weight
 // fight route.   TIMING=auto|average|skilled node tools/balance_sim.mjs
 const TIMING_PROFILE = process.env.TIMING || "average";
 const DIST = {
-  auto:    { attack: { perfect: 0,    good: 1,    miss: 0    }, guard: { perfect: 0,    good: 0,    miss: 1    }, reach: { perfect: 0 } },
-  average: { attack: { perfect: 0.20, good: 0.60, miss: 0.20 }, guard: { perfect: 0.15, good: 0.45, miss: 0.40 }, reach: { perfect: 0.20 } },
-  skilled: { attack: { perfect: 0.60, good: 0.35, miss: 0.05 }, guard: { perfect: 0.50, good: 0.40, miss: 0.10 }, reach: { perfect: 0.60 } },
+  auto:    { attack: { perfect: 0,    good: 1,    miss: 0    }, guard: { perfect: 0,    good: 0,    miss: 1    }, reach: { perfect: 0,    good: 1,    miss: 0    } },
+  average: { attack: { perfect: 0.20, good: 0.60, miss: 0.20 }, guard: { perfect: 0.15, good: 0.45, miss: 0.40 }, reach: { perfect: 0.20, good: 0.60, miss: 0.20 } },
+  skilled: { attack: { perfect: 0.60, good: 0.35, miss: 0.05 }, guard: { perfect: 0.50, good: 0.40, miss: 0.10 }, reach: { perfect: 0.60, good: 0.35, miss: 0.05 } },
 };
 if (!DIST[TIMING_PROFILE]) { console.error(`unknown TIMING profile "${TIMING_PROFILE}" (auto|average|skilled)`); process.exit(1); }
-const ATTACK_MULT = { perfect: 1.3, good: 1.0, miss: 0.85 }; // = src/minigame.js TIMING
+const ATTACK_MULT = { perfect: 1.3, good: 1.0, miss: 0.7 }; // = src/minigame.js TIMING
 const GUARD_MULT  = { perfect: 0.7, good: 0.85, miss: 1.0 };
 function rollQ(kind) {
   const d = DIST[TIMING_PROFILE][kind];
@@ -127,9 +127,12 @@ function enemyAct(e, party, wall) {
 }
 
 function reach(e, o, actor) {
-  // battle.js: a perfect reach beat on a kind line refunds 1 Ink to the reacher
-  if (o.good && actor && Math.random() < DIST[TIMING_PROFILE].reach.perfect) {
-    actor.ink = Math.min(actor.maxInk, actor.ink + 1);
+  // battle.js: the reach beat moves ink — a perfect on a kind line refunds 1
+  // to the reacher, a flubbed beat spills 1 (hearts are never touched)
+  if (actor) {
+    const q = rollQ("reach");
+    if (q === "perfect" && o.good) actor.ink = Math.min(actor.maxInk, actor.ink + 1);
+    else if (q === "miss") actor.ink = Math.max(0, actor.ink - 1);
   }
   if (e.def.reachStory) {
     // battle.js: the final boss — story beats land exactly one per round, no
