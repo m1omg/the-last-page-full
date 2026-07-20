@@ -283,7 +283,7 @@ await page.waitForTimeout(250);
   // force a perfect verdict with the linger already over; the update gate resolves it
   await g(`(() => {
     const mg = window.__game.game.battle.minigame;
-    mg.t = mg.cfg.center; mg.pressT = mg.t; mg.quality = "perfect"; mg.verdictAt = mg.t; mg.doneAt = mg.t;
+    mg.pressT = mg.cfg.center; mg.quality = "perfect"; mg.verdictAt = 0; mg.doneAt = 1;
   })()`);
   await page.waitForTimeout(250);
   if (await g("!!window.__game.game.battle.minigame")) fail("perfect beat never resolved");

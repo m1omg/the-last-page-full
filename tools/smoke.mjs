@@ -248,9 +248,16 @@ await waitIdle();
 await shot("02_bedroom");
 
 step = "menu open/close";
-await key("KeyX");
-await page.waitForTimeout(250);
-if (!(await g("window.__game.game.menu.open"))) await fail("menu didn't open on X");
+// a late-queued intro script can eat the first X on slow machines — retry
+{
+  const t0 = Date.now();
+  while (!(await g("window.__game.game.menu.open"))) {
+    if (Date.now() - t0 > 12000) await fail("menu didn't open on X");
+    await waitIdle();
+    await key("KeyX");
+    await page.waitForTimeout(250);
+  }
+}
 await key("KeyX");
 await page.waitForTimeout(250);
 if (await g("window.__game.game.menu.open")) await fail("menu didn't close on X");

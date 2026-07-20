@@ -1,6 +1,10 @@
 // input.js — keyboard state with edge detection.
 const down = new Set();
 const pressed = new Set();
+// wall-clock time of each key's latest press edge — the battle timing beats
+// judge against this instead of the frame clock, so a press isn't penalized
+// by however late in the frame it landed
+const stamps = {};
 
 const KEYMAP = {
   ArrowUp: "up", KeyW: "up",
@@ -17,7 +21,7 @@ window.addEventListener("keydown", (e) => {
   const k = KEYMAP[e.code];
   if (!k) return;
   e.preventDefault();
-  if (!down.has(k)) pressed.add(k);
+  if (!down.has(k)) { pressed.add(k); stamps[k] = performance.now(); }
   down.add(k);
 });
 window.addEventListener("keyup", (e) => {
@@ -35,16 +39,18 @@ export const input = {
   // eat a press mid-frame so a later scene in the same frame doesn't see it
   consume(k) { pressed.delete(k); },
   // simulate a key press (used by the debug/smoke harness)
-  inject(k) { pressed.add(k); },
+  inject(k) { pressed.add(k); stamps[k] = performance.now(); },
+  // wall-clock performance.now() of the latest press edge for this key
+  pressAt(k) { return stamps[k]; },
 
   // ---- synthetic input, used by touch.js. These feed the SAME sets the
   // keyboard feeds, so every scene works unchanged.
   // keydown-equivalent: an edge on the transition, then held.
-  press(k) { if (!down.has(k)) pressed.add(k); down.add(k); },
+  press(k) { if (!down.has(k)) { pressed.add(k); stamps[k] = performance.now(); } down.add(k); },
   // keyup-equivalent.
   release(k) { down.delete(k); },
   // a one-frame edge with no hold (a tap). Auto-repeat must use this, since
   // press() on an already-held key produces no new edge.
-  tap(k) { pressed.add(k); },
+  tap(k) { pressed.add(k); stamps[k] = performance.now(); },
   clearAll() { down.clear(); pressed.clear(); },
 };
