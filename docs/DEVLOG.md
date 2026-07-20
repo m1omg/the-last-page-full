@@ -558,3 +558,13 @@ powerful." Two knobs, both mirrored in the sim:
   ink axis as the bonus, and the sim's reach roll now has the full
   perfect/good/miss split. Peace medians verified unchanged; the Auto
   anchor still matches the pre-beat baseline.
+
+### §16.3 Early-game ease + slower sweep (2026-07-20)
+
+Playtest round three. The attack sweep read too fast — the whole attack
+timeline is scaled 1.15× (dur 1150 / center 780 / ±70 / ±185): same
+on-screen window widths, 15% more time to react; multipliers and the sim
+profiles untouched. And the first hour hit too hard: early atk cut ~13%
+(sniffle 10→9, scribble 13→11, TANGLE 15→13; hp/def/spd untouched so the
+round bands stay). Sim: TANGLE fight losses 14%→3%, meadow-pair peace
+endHP 55%→65%, tutorial 72%→76%; woods onward unchanged to the digit.

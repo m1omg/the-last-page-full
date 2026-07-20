@@ -16,7 +16,9 @@ import { loadSettings, updateSettings, MINIGAME_MODES } from "./settings.js";
 // All times in ms. `center` is the beat; distance from it picks the verdict.
 // balance_sim.mjs mirrors the mults — keep them in sync (its DIST/…_MULT tables).
 export const TIMING = {
-  attack: { dur: 1000, center: 680, perfect: 60, good: 160, verdict: 450,
+  // the whole attack timeline is scaled 1.15x from the first shipped values —
+  // playtest: the sweep read too fast. Same on-screen window widths, more ms.
+  attack: { dur: 1150, center: 780, perfect: 70, good: 185, verdict: 450,
             mults: { perfect: 1.3, good: 1.0, miss: 0.7 } },
   guard:  { dur: 1120, center: 900, perfect: 85, good: 200, verdict: 350,
             mults: { perfect: 0.7, good: 0.85, miss: 1.0 } },
