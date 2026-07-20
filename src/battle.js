@@ -80,7 +80,7 @@ export class BattleScene {
       this.queueMsg("(Battle basics: FIGHT deals damage. REACH OUT is how you talk to sad doodles - fill their hearts and the fight ends peacefully. Emotions beat each other in a circle: GIGGLY beats GRUMPY beats GLOOMY beats GIGGLY.)");
       this.queueMsg("(A doodle deep in a bad feeling CAN'T HEAR YOU. Reach out once to break the storm - or shift its mood with a skill - and THEN your words land. There's a little book about this lying in the Blank Page - once you pick it up, it stays in your POCKETS.)");
       if (minigames.active(game)) {
-        this.queueMsg("(One more thing: when you swing, brace, or reach, a little beat appears - press Z right on it. A perfect beat hits harder, softens blows, and puts a drop of Ink back in your pen.)");
+        this.queueMsg("(One more thing: when you swing, brace, or reach, a little beat appears - press Z right on it. A perfect beat hits harder, softens blows, and puts a drop of Ink back in your pen - and a flubbed one spills a drop.)");
       }
     }
   }
@@ -333,11 +333,15 @@ export class BattleScene {
       case "reach": {
         this.withTiming("reach", { actor: a, enemy: act.target }, (tm, q) => {
           this.doReach(a, act);
-          // the beat never touches calm/settled/storm — a perfect on a kind
-          // line just puts a drop of ink back in the reacher's pen
+          // the beat never touches calm/settled/storm — it moves ink instead:
+          // a perfect on a kind line puts a drop back in the reacher's pen,
+          // a flubbed beat spills one (the words land, but cost more)
           if (q === "perfect" && act.option && act.option.good && a.hp > 0) {
             a.ink = Math.min(a.maxInk, a.ink + 1);
             this.addFloater(a, "+1✒", "#5a7fc4");
+          } else if (q === "miss" && a.hp > 0 && a.ink > 0) {
+            a.ink -= 1;
+            this.addFloater(a, "-1✒", "#8a6a7a");
           }
           this.checkEnd();
         });

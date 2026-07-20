@@ -17,7 +17,7 @@ import { loadSettings, updateSettings, MINIGAME_MODES } from "./settings.js";
 // balance_sim.mjs mirrors the mults — keep them in sync (its DIST/…_MULT tables).
 export const TIMING = {
   attack: { dur: 1000, center: 680, perfect: 60, good: 160, verdict: 450,
-            mults: { perfect: 1.3, good: 1.0, miss: 0.85 } },
+            mults: { perfect: 1.3, good: 1.0, miss: 0.7 } },
   guard:  { dur: 1120, center: 900, perfect: 85, good: 200, verdict: 350,
             mults: { perfect: 0.7, good: 0.85, miss: 1.0 } },
   reach:  { dur: 1060, center: 860, perfect: 80, good: 190, verdict: 450,

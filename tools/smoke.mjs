@@ -291,10 +291,18 @@ if ((await g("window.__game.game.state.map")) !== "blank_page") fail("not in bla
 await shot("03_blank_page");
 
 step = "guide book pickup";
-await walkTo(12, 7); await g(`window.__game.game.state.facing="down"`); await key("KeyZ");
-await page.waitForTimeout(400);
-const guideText = await g("window.__game.game.dialogue.text || ''");
-if (!/HOW TO TALK/.test(guideText)) await fail(`the guide book didn't open: ${JSON.stringify(guideText)}`);
+// a lingering arrival dialogue can eat the Z on slow machines — retry
+{
+  const t0 = Date.now();
+  for (;;) {
+    await waitIdle();
+    await walkTo(12, 7); await g(`window.__game.game.state.facing="down"`); await key("KeyZ");
+    await page.waitForTimeout(400);
+    const guideText = await g("window.__game.game.dialogue.text || ''");
+    if (/HOW TO TALK/.test(guideText) || (await flag("guide_taken"))) break;
+    if (Date.now() - t0 > 12000) await fail(`the guide book didn't open: ${JSON.stringify(guideText)}`);
+  }
+}
 await waitIdle(15000);
 if (!(await g("!!window.__game.game.state.inventory.guidebook"))) await fail("guide book not in the inventory after pickup");
 if (!(await flag("guide_taken"))) await fail("guide_taken flag not set");
